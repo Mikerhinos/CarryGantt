@@ -134,6 +134,10 @@
     .priority-high { background-color: #f8d7da !important; }
     .language-selector { margin-bottom: 15px; text-align: center; }
     .language-selector button { margin: 0 3px; padding: 5px 8px; font-size: 0.9em; }
+	.language-selector button.active {
+      background-color: #007bff; /* Bleu Bootstrap pour un look cohérent */
+      color: white; /* Texte blanc pour le contraste */
+	}
     .sidebar-content { flex-grow: 1; overflow-y: auto; }
     .custom-lightbox-members-list {
         max-height: 150px;
@@ -148,7 +152,7 @@
 <body>
   <div class="sidebar">
     <div class="language-selector">
-      <button class="btn btn-sm btn-light" onclick="setLanguage('fr')">FR</button>
+      <button class="btn btn-sm btn-light active" onclick="setLanguage('fr')">FR</button>
       <button class="btn btn-sm btn-light" onclick="setLanguage('en')">EN</button>
       <button class="btn btn-sm btn-light" onclick="setLanguage('es')">ES</button>
       <button class="btn btn-sm btn-light" onclick="setLanguage('de')">DE</button>
@@ -656,10 +660,21 @@
         updateTaskMembers(); 
     }
 
-    function setLanguage(lang) {
-        currentLang = lang;
-        applyTranslations();
-    }
+	function setLanguage(lang) {
+	  currentLang = lang;
+	  applyTranslations();
+	  
+	  // Retirer la classe active de tous les boutons
+	  document.querySelectorAll('.language-selector button').forEach(btn => {
+		btn.classList.remove('active');
+	  });
+	  
+	  // Ajouter la classe active au bouton sélectionné
+	  const selectedBtn = document.querySelector(`.language-selector button[onclick="setLanguage('${lang}')"]`);
+	  if (selectedBtn) {
+		selectedBtn.classList.add('active');
+	  }
+	}
 
     // --- Utility Functions ---
     function adjustColor(color, percent) {
