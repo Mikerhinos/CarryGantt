@@ -134,7 +134,6 @@
     .priority-high { background-color: #f8d7da !important; }
     .language-selector { margin-bottom: 15px; text-align: center; }
     .language-selector button { margin: 0 3px; padding: 5px 8px; font-size: 0.9em; }
-    .language-selector button.active { background-color: #007bff; color: white;	}
     .sidebar-content { flex-grow: 1; overflow-y: auto; }
     .custom-lightbox-members-list {
         max-height: 150px;
@@ -149,7 +148,7 @@
 <body>
   <div class="sidebar">
     <div class="language-selector">
-      <button class="btn btn-sm btn-light active" onclick="setLanguage('fr')">FR</button>
+      <button class="btn btn-sm btn-light" onclick="setLanguage('fr')">FR</button>
       <button class="btn btn-sm btn-light" onclick="setLanguage('en')">EN</button>
       <button class="btn btn-sm btn-light" onclick="setLanguage('es')">ES</button>
       <button class="btn btn-sm btn-light" onclick="setLanguage('de')">DE</button>
@@ -596,6 +595,17 @@
             const key = option.value === "project" ? 'task_priority_project' : `priority_${option.value}`;
             option.textContent = translate(key);
         });
+
+        // Mettre en surbrillance le bouton de la langue active
+        document.querySelectorAll('.language-selector button').forEach(button => {
+            button.classList.remove('btn-primary', 'text-white');
+            button.classList.add('btn-light');
+        });
+        const activeButton = document.querySelector(`.language-selector button[onclick="setLanguage('${currentLang}')"]`);
+        if (activeButton) {
+            activeButton.classList.remove('btn-light');
+            activeButton.classList.add('btn-primary', 'text-white');
+        }
         
         if (gantt && gantt.config && gantt.locale) { 
             if (gantt.locale.labels) {
@@ -657,21 +667,10 @@
         updateTaskMembers(); 
     }
 
-	function setLanguage(lang) {
-	  currentLang = lang;
-	  applyTranslations();
-	  
-	  // Retirer la classe active de tous les boutons
-	  document.querySelectorAll('.language-selector button').forEach(btn => {
-		btn.classList.remove('active');
-	  });
-	  
-	  // Ajouter la classe active au bouton sélectionné
-	  const selectedBtn = document.querySelector(`.language-selector button[onclick="setLanguage('${lang}')"]`);
-	  if (selectedBtn) {
-		selectedBtn.classList.add('active');
-	  }
-	}
+    function setLanguage(lang) {
+        currentLang = lang;
+        applyTranslations();
+    }
 
     // --- Utility Functions ---
     function adjustColor(color, percent) {
@@ -1396,7 +1395,7 @@
       });
 
       gantt.attachEvent("onAfterTaskDelete", function(id, task) {
-        showNotification('notification_task_deleted', 'success', {name: task.text.replace(/^[🔴🟡🟢]\s*/, '')});
+        showNotification('notification_task_deleted', 'success', {name: task.text.replace(/^[🔴�🟢]\s*/, '')});
         syncProjectProgress(task.parent);
       });
 
@@ -1565,9 +1564,45 @@
     }
 
     function exportGanttToPNG() {
-      if(!gantt) return;
-      gantt.exportToPNG({ name: "gantt_diagram.png", raw: true });
-      showNotification("notification_png_exported");
+        if (!gantt) return;
+
+        // Définir les styles nécessaires pour que l'export ressemble à l'affichage
+        const styles = `
+            <style>
+                /* Style pour griser les week-ends dans la timeline */
+                .gantt_task_cell.weekend {
+                    background-color: #f0f0f0 !important;
+                }
+                /* Style pour les indicateurs de couleur des membres dans la grille */
+                .member-indicator {
+                    width: 14px;
+                    height: 14px;
+                    display: inline-block;
+                    border-radius: 50%;
+                    margin-right: 5px;
+                    vertical-align: middle;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+                }
+                /* S'assurer que le contenu de la cellule des membres est centré */
+                .gantt_grid_data .gantt_cell[data-column-name=members] {
+                    text-align: center;
+                }
+                /* Styles de base pour les barres de tâches pour un meilleur rendu */
+                .gantt_task_line {
+                    border-radius: 4px !important;
+                }
+                .gantt_task_progress {
+                    border-radius: 4px !important;
+                }
+            </style>
+        `;
+
+        gantt.exportToPNG({
+            name: "gantt_diagram.png",
+            raw: true, // `raw: true` est crucial pour rendre le HTML (comme les points de couleur)
+            header: styles // Inclure nos styles personnalisés dans l'export
+        });
+        showNotification("notification_png_exported");
     }
 
     // --- Initial Data (Example) ---
