@@ -5,6 +5,7 @@
   <title>Gestion de Projet - Diagramme de Gantt</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.dhtmlx.com/gantt/8.0/dhtmlxgantt.js"></script>
   <link rel="stylesheet" href="https://cdn.dhtmlx.com/gantt/8.0/dhtmlxgantt.css">
   <style>
@@ -129,6 +130,24 @@
     .gantt_grid_data .gantt_cell[role=gridcell][data-column-name=members]:hover {
       background-color: #e9ecef;
     }
+
+    /* FIX: Rendre les poignées de redimensionnement des colonnes visibles */
+    .gantt_grid_resizer {
+        position: absolute;
+        top: 0;
+        right: -1px;
+        width: 5px;
+        height: 100%;
+        cursor: col-resize !important;
+        z-index: 10;
+        background-color: transparent;
+        transition: background-color 0.2s;
+    }
+
+    .gantt_grid_resizer:hover {
+        background-color: rgba(0, 123, 255, 0.5);
+    }
+
     .priority-low { background-color: #d4edda !important; }
     .priority-medium { background-color: #fff3cd !important; }
     .priority-high { background-color: #f8d7da !important; }
@@ -160,71 +179,71 @@
       <button class="btn btn-secondary w-100" onclick="document.getElementById('importJSON').click()" data-translate-key="import">📂 Importer</button>
     </div>
     <div class="sidebar-content">
-        <div class="accordion" id="sidebarAccordion">
+      <div class="accordion" id="sidebarAccordion">
         <div class="accordion-item">
-            <h2 class="accordion-header">
+          <h2 class="accordion-header">
             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#membersCollapse" data-translate-key="members_section_title">
-                👥 Membres
+              👥 Membres
             </button>
-            </h2>
-            <div id="membersCollapse" class="accordion-collapse collapse show" data-bs-parent="#sidebarAccordion">
+          </h2>
+          <div id="membersCollapse" class="accordion-collapse collapse show" data-bs-parent="#sidebarAccordion">
             <div class="accordion-body">
-                <input id="editMemberId" name="editMemberId" type="hidden" value="">
-                <label for="memberName"></label><input id="memberName" name="memberName" class="form-control mb-2" data-translate-placeholder-key="member_name_placeholder">
-                <label for="memberColor"></label><input type="color" id="memberColor" name="memberColor" class="form-control mb-2" value="#667eea">
-                <button id="memberActionBtn" class="btn btn-primary w-100" onclick="addOrUpdateMember()" data-translate-key="add_member_btn">Ajouter Membre</button>
-                <div id="membersList" class="mt-3"></div>
+              <input id="editMemberId" name="editMemberId" type="hidden" value="">
+              <label for="memberName"></label><input id="memberName" name="memberName" class="form-control mb-2" data-translate-placeholder-key="member_name_placeholder">
+              <label for="memberColor"></label><input type="color" id="memberColor" name="memberColor" class="form-control mb-2" value="#667eea">
+              <button id="memberActionBtn" class="btn btn-primary w-100" onclick="addOrUpdateMember()" data-translate-key="add_member_btn">Ajouter Membre</button>
+              <div id="membersList" class="mt-3"></div>
             </div>
-            </div>
+          </div>
         </div>
         <div class="accordion-item">
-            <h2 class="accordion-header">
+          <h2 class="accordion-header">
             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#projectCollapse" data-translate-key="projects_section_title">
-                📁 Projets
+              📁 Projets
             </button>
-            </h2>
-            <div id="projectCollapse" class="accordion-collapse collapse" data-bs-parent="#sidebarAccordion">
+          </h2>
+          <div id="projectCollapse" class="accordion-collapse collapse" data-bs-parent="#sidebarAccordion">
             <div class="accordion-body">
-                <label for="projectName"></label><input id="projectName" name="projectName" class="form-control mb-2" data-translate-placeholder-key="project_name_placeholder">
-                <label for="projectDescription"></label><textarea id="projectDescription" name="projectDescription" class="form-control mb-2" data-translate-placeholder-key="project_description_placeholder" rows="2"></textarea>
-                <label for="projectDeadline"></label><input type="date" id="projectDeadline" name="projectDeadline" class="form-control mb-2">
-                <label for="projectPriority"></label><select id="projectPriority" name="projectPriority" class="form-select mb-2">
+              <label for="projectName"></label><input id="projectName" name="projectName" class="form-control mb-2" data-translate-placeholder-key="project_name_placeholder">
+              <label for="projectDescription"></label><textarea id="projectDescription" name="projectDescription" class="form-control mb-2" data-translate-placeholder-key="project_description_placeholder" rows="2"></textarea>
+              <label for="projectDeadline"></label><input type="text" id="projectDeadline" name="projectDeadline" class="form-control mb-2">
+              <label for="projectPriority"></label><select id="projectPriority" name="projectPriority" class="form-select mb-2">
                 <option value="low" data-translate-key="priority_low">🟢 Basse</option>
                 <option value="medium" data-translate-key="priority_medium">🟡 Moyenne</option>
                 <option value="high" data-translate-key="priority_high">🔴 Haute</option>
-                </select>
-                <label for="projectColor"></label><input type="color" id="projectColor" name="projectColor" class="form-control mb-2" value="#28a745">
-                <button class="btn btn-success w-100" onclick="addProject()" data-translate-key="create_project_btn">Créer Projet</button>
-                <div id="projectList"></div>
+              </select>
+              <label for="projectColor"></label><input type="color" id="projectColor" name="projectColor" class="form-control mb-2" value="#28a745">
+              <button class="btn btn-success w-100" onclick="addProject()" data-translate-key="create_project_btn">Créer Projet</button>
+              <div id="projectList"></div>
             </div>
-            </div>
+          </div>
         </div>
         <div class="accordion-item">
-            <h2 class="accordion-header">
+          <h2 class="accordion-header">
             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#taskCollapse" data-translate-key="new_task_section_title">
-                ✅ Nouvelle Tâche
+              ✅ Nouvelle Tâche
             </button>
-            </h2>
-            <div id="taskCollapse" class="accordion-collapse collapse" data-bs-parent="#sidebarAccordion">
+          </h2>
+          <div id="taskCollapse" class="accordion-collapse collapse" data-bs-parent="#sidebarAccordion">
             <div class="accordion-body">
-                <label for="taskProject"></label><select id="taskProject" name="taskProject" class="form-select mb-2">
+              <label for="taskProject"></label><select id="taskProject" name="taskProject" class="form-select mb-2">
                 <option value="" data-translate-key="select_project_option">Sélectionner un projet</option>
-                </select>
-                <label for="taskName"></label><input id="taskName" name="taskName" class="form-control mb-2" data-translate-placeholder-key="task_name_placeholder">
-                <label for="taskStart"></label><input type="date" id="taskStart" name="taskStart" class="form-control mb-2">
-                <label for="taskDuration"></label><input type="number" id="taskDuration" name="taskDuration" class="form-control mb-2" data-translate-placeholder-key="task_duration_placeholder">
-                <label for="taskProgress"></label><select id="taskProgress" name="taskProgress" class="form-select mb-2">
+              </select>
+              <label for="taskName"></label><input id="taskName" name="taskName" class="form-control mb-2" data-translate-placeholder-key="task_name_placeholder">
+			  <label for="taskStart"></label><input type="text" id="taskStart" name="taskStart" class="form-control mb-2" data-translate-placeholder-key="task_start_placeholder">
+              <label for="taskDuration"></label><input type="number" id="taskDuration" name="taskDuration" class="form-control mb-2" data-translate-placeholder-key="task_duration_placeholder">
+              <label for="taskProgress"></label><select id="taskProgress" name="taskProgress" class="form-select mb-2">
                 <option value="0">0%</option> <option value="0.1">10%</option> <option value="0.25">25%</option>
                 <option value="0.5">50%</option> <option value="0.75">75%</option> <option value="0.9">90%</option>
                 <option value="1">100%</option>
-                </select>
-                <label class="form-label" data-translate-key="assigned_members_label">Membres assignés :</label>
-                <div id="taskMembers" class="mb-2" style="max-height: 120px; overflow-y: auto; border: 1px solid #e9ecef; padding: 10px; border-radius: 10px;"></div>
-                <button class="btn btn-warning w-100" onclick="addTask()" data-translate-key="add_task_btn">Ajouter Tâche</button>
+              </select>
+              <label class="form-label" data-translate-key="assigned_members_label">Membres assignés :</label>
+              <div id="taskMembers" class="mb-2" style="max-height: 120px; overflow-y: auto; border: 1px solid #e9ecef; padding: 10px; border-radius: 10px;"></div>
+              <button class="btn btn-warning w-100" onclick="addTask()" data-translate-key="add_task_btn">Ajouter Tâche</button>
             </div>
-            </div>
+          </div>
         </div>
-        </div>
+      </div>
     </div>
   </div>
 
@@ -251,15 +270,15 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-            <label for="editProjectName"></label><input type="text" id="editProjectName" name="editProjectName" class="form-control mb-2" data-translate-placeholder-key="project_name_placeholder">
-            <label for="editProjectDescription"></label><textarea id="editProjectDescription" name="editProjectDescription" class="form-control mb-2" data-translate-placeholder-key="project_description_placeholder" rows="2"></textarea>
-            <label for="editProjectDeadline"></label><input type="date" id="editProjectDeadline" name="editProjectDeadline" class="form-control mb-2">
-            <label for="editProjectPriority"></label><select id="editProjectPriority" name="editProjectPriority" class="form-select mb-2">
+          <label for="editProjectName"></label><input type="text" id="editProjectName" name="editProjectName" class="form-control mb-2" data-translate-placeholder-key="project_name_placeholder">
+          <label for="editProjectDescription"></label><textarea id="editProjectDescription" name="editProjectDescription" class="form-control mb-2" data-translate-placeholder-key="project_description_placeholder" rows="2"></textarea>
+          <label for="editProjectDeadline"></label><input type="text" id="editProjectDeadline" name="editProjectDeadline" class="form-control mb-2">
+          <label for="editProjectPriority"></label><select id="editProjectPriority" name="editProjectPriority" class="form-select mb-2">
             <option value="low" data-translate-key="priority_low">🟢 Basse</option>
             <option value="medium" data-translate-key="priority_medium">🟡 Moyenne</option>
             <option value="high" data-translate-key="priority_high">🔴 Haute</option>
           </select>
-            <label for="editProjectColor"></label><input type="color" id="editProjectColor" name="editProjectColor" class="form-control mb-2">
+          <label for="editProjectColor"></label><input type="color" id="editProjectColor" name="editProjectColor" class="form-control mb-2">
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-translate-key="cancel_btn">Annuler</button>
@@ -302,7 +321,7 @@
             <label for="customLightboxTaskName" class="form-label" data-translate-key="custom_lightbox_task_name_label">Nom de la tâche</label>
             <input type="text" class="form-control" id="customLightboxTaskName" name="customLightboxTaskName" data-translate-placeholder-key="task_name_placeholder">
           </div>
-          
+
           <div class="row">
             <div class="col-md-6 mb-3">
               <label for="customLightboxTaskPriority" class="form-label" data-translate-key="custom_lightbox_task_priority_label">Priorité</label>
@@ -313,7 +332,7 @@
                 <option value="high" data-translate-key="priority_high">🔴 Haute</option>
               </select>
             </div>
-             <div class="col-md-6 mb-3">
+            <div class="col-md-6 mb-3">
               <label for="customLightboxTaskProgress" class="form-label" data-translate-key="custom_lightbox_task_progress_label">Avancement</label>
               <select id="customLightboxTaskProgress" name="customLightboxTaskProgress" class="form-select">
                 <option value="0">0%</option>
@@ -336,29 +355,27 @@
           <div class="row">
             <div class="col-md-4 mb-3">
               <label for="customLightboxTaskStart" class="form-label" data-translate-key="custom_lightbox_task_start_label">Date de début</label>
-              <input type="date" class="form-control" id="customLightboxTaskStart" name="customLightboxTaskStart">
+              <input type="text" class="form-control" id="customLightboxTaskStart" name="customLightboxTaskStart">
             </div>
             <div class="col-md-4 mb-3">
               <label for="customLightboxTaskEnd" class="form-label" data-translate-key="custom_lightbox_task_end_label">Date de fin</label>
-              <input type="date" class="form-control" id="customLightboxTaskEnd" name="customLightboxTaskEnd">
+              <input type="text" class="form-control" id="customLightboxTaskEnd" name="customLightboxTaskEnd">
             </div>
             <div class="col-md-4 mb-3">
               <label for="customLightboxTaskDuration" class="form-label" data-translate-key="custom_lightbox_task_duration_label">Durée (jours)</label>
               <input type="number" class="form-control" id="customLightboxTaskDuration" name="customLightboxTaskDuration" min="0" data-translate-placeholder-key="task_duration_placeholder">
             </div>
           </div>
-          
+
           <div class="mb-3">
             <label class="form-label" data-translate-key="assigned_members_label">Membres assignés :</label>
-            <div id="customLightboxTaskMembers" class="custom-lightbox-members-list">
-              </div>
+            <div id="customLightboxTaskMembers" class="custom-lightbox-members-list"></div>
           </div>
 
           <div class="mb-3">
             <label for="customLightboxTaskComments" class="form-label" data-translate-key="custom_lightbox_task_comments_label">Commentaires</label>
             <textarea class="form-control" id="customLightboxTaskComments" name="customLightboxTaskComments" rows="3" data-translate-placeholder-key="task_comments_placeholder"></textarea>
           </div>
-
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-danger me-auto" onclick="deleteTaskFromCustomLightbox()" data-translate-key="delete_btn">Supprimer</button>
@@ -370,8 +387,9 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script>
-    // --- Global Variables ---
+    // Global Variables
     let members = [];
     let projects = {};
     let allLinks = [];
@@ -383,174 +401,325 @@
     let customTaskModalInstance = null;
     let currentEditingTaskId = null;
     let elementToFocusOnModalClose = null;
+    let datePickers = [];
 
-    // --- Translations ---
+    // Translations
     const translations = {
-        fr: {
-            export: "💾 Exporter", import: "📂 Importer", members_section_title: "👥 Membres",
-            member_name_placeholder: "Nom du membre", add_member_btn: "Ajouter Membre", edit_member_btn: "Modifier Membre",
-            projects_section_title: "📁 Projets", project_name_placeholder: "Nom du projet",
-            project_description_placeholder: "Description", priority_low: "🟢 Basse", priority_medium: "🟡 Moyenne", priority_high: "🔴 Haute",
-            create_project_btn: "Créer Projet", new_task_section_title: "✅ Nouvelle Tâche", select_project_option: "Sélectionner un projet",
-            task_name_placeholder: "Nom de la tâche", task_duration_placeholder: "Durée (jours ouvrés)", assigned_members_label: "Membres assignés :",
-            add_task_btn: "Ajouter Tâche", gantt_chart_title: "📊 Diagramme de Gantt", recalculate_btn: "🔄 Recalculer", export_png_btn: "🖼️ PNG",
-            edit_project_modal_title: "Modifier Projet", cancel_btn: "Annuler", save_btn: "Sauvegarder", delete_btn: "Supprimer",
-            manage_task_members_modal_title_prefix: "Gérer les membres de la tâche",
-            notification_export_success: "✅ Données exportées en JSON.", notification_import_success: "✅ Données importées avec succès.",
-            notification_import_error: "⚠️ Erreur importation: ", notification_invalid_json_format: "Format JSON invalide ou données/compteurs manquants.",
-            notification_member_added: "✅ Membre {name} ajouté.", notification_member_edited: "✅ Membre {name} modifié.",
-            notification_member_exists: "⚠️ Ce membre existe déjà.", notification_enter_name: "⚠️ Entrez un nom.",
-            notification_member_removed: "❌ Membre {name} supprimé.", notification_visibility_updated: "✅ Visibilité de {name} mise à jour.",
-            notification_no_members: "<small class=\"text-muted\">Aucun membre</small>",
-            notification_project_name_required: "⚠️ Nom de projet requis.", notification_project_exists: "⚠️ Ce projet existe déjà.",
-            notification_project_created: "🎉 Projet {name} créé avec tâches par défaut.", notification_project_edited: "✅ Projet {name} modifié.",
-            notification_project_removed: "❌ Projet {name} supprimé.",
-            notification_fill_all_fields: "⚠️ Remplissez tous les champs (projet, nom, début, durée > 0).",
-            notification_invalid_project: "⚠️ Projet sélectionné invalide.", notification_task_added: "✅ Tâche {name} ajoutée.",
-            notification_task_members_updated: "✅ Membres de la tâche {name} mis à jour.",
-            notification_task_updated: "✅ Tâche {name} mise à jour.", notification_project_and_tasks_updated: "✅ Projet {name} et ses tâches mises à jour.",
-            notification_link_added: "🔗 Lien ajouté.", notification_link_removed: "❌ Lien supprimé.",
-            notification_task_deleted: "🗑️ Tâche {name} supprimée.",
-            notification_recalculated: "🔄 Planning recalculé selon les dépendances",
-            notification_recalculation_error: "⚠️ Erreur lors du recalcul",
-            notification_png_exported: "🖼️ Diagramme exporté en PNG avec week-ends grisés.",
-            notification_invalid_date_format: "⚠️ Format de date invalide fourni.",
-            notification_date_parse_error: "⚠️ Erreur lors de l'analyse de la date.",
-            gantt_col_task: "Tâche", gantt_col_start_date: "Début", gantt_col_end_date: "Fin", gantt_col_duration: "Durée (j)",
-            gantt_col_progress: "Avancement", gantt_col_members: "Membres", gantt_col_no_members: "Aucun",
-            custom_lightbox_title: "Détails de la Tâche",
-            custom_lightbox_task_name_label: "Nom de la tâche",
-            custom_lightbox_task_priority_label: "Priorité de la tâche",
-            custom_lightbox_task_progress_label: "Avancement",
-            custom_lightbox_task_start_label: "Date de début",
-            custom_lightbox_task_end_label: "Date de fin",
-            custom_lightbox_task_duration_label: "Durée (jours)",
-            custom_lightbox_task_comments_label: "Commentaires",
-            task_comments_placeholder: "Ajouter un commentaire...",
-            task_priority_project: "Par défaut (Projet)",
-            default_task_cahier_des_charges: "Réalisation du cahier des charges ({projectName})",
-            default_task_conception_pedagogique: "Conception pédagogique ({projectName})",
-            default_task_production_contenus: "Production de contenus ({projectName})",
-            default_task_developpement_interactif: "Développement interactif ({projectName})",
-            default_task_tests_validation: "Tests et validation ({projectName})",
-            gantt_week_prefix: "Sem.",
-        },
-        en: { 
-            export: "💾 Export", import: "📂 Import", members_section_title: "👥 Members",
-            member_name_placeholder: "Member name", add_member_btn: "Add Member", edit_member_btn: "Edit Member",
-            projects_section_title: "📁 Projects", project_name_placeholder: "Project name",
-            project_description_placeholder: "Description", priority_low: "🟢 Low", priority_medium: "🟡 Medium", priority_high: "🔴 High",
-            create_project_btn: "Create Project", new_task_section_title: "✅ New Task", select_project_option: "Select a project",
-            task_name_placeholder: "Task name", task_duration_placeholder: "Duration (workdays)", assigned_members_label: "Assigned members:",
-            add_task_btn: "Add Task", gantt_chart_title: "📊 Gantt Chart", recalculate_btn: "🔄 Recalculate", export_png_btn: "🖼️ PNG",
-            edit_project_modal_title: "Edit Project", cancel_btn: "Cancel", save_btn: "Save", delete_btn: "Delete",
-            manage_task_members_modal_title_prefix: "Manage task members",
-            notification_export_success: "✅ Data exported to JSON.", notification_import_success: "✅ Data imported successfully.",
-            notification_import_error: "⚠️ Import error: ", notification_invalid_json_format: "Invalid JSON format or missing data/counters.",
-            notification_member_added: "✅ Member {name} added.", notification_member_edited: "✅ Member {name} updated.",
-            notification_member_exists: "⚠️ This member already exists.", notification_enter_name: "⚠️ Enter a name.",
-            notification_member_removed: "❌ Member {name} removed.", notification_visibility_updated: "✅ Visibility of {name} updated.",
-            notification_no_members: "<small class=\"text-muted\">No members</small>",
-            notification_project_name_required: "⚠️ Project name required.", notification_project_exists: "⚠️ This project already exists.",
-            notification_project_created: "🎉 Project {name} created with default tasks.", notification_project_edited: "✅ Project {name} updated.",
-            notification_project_removed: "❌ Project {name} removed.",
-            notification_fill_all_fields: "⚠️ Fill all fields (project, name, start, duration > 0).",
-            notification_invalid_project: "⚠️ Invalid project selected.", notification_task_added: "✅ Task {name} added.",
-            notification_task_members_updated: "✅ Task {name} members updated.",
-            notification_task_updated: "✅ Task {name} updated.", notification_project_and_tasks_updated: "✅ Project {name} and its tasks updated.",
-            notification_link_added: "🔗 Link added.", notification_link_removed: "❌ Link removed.",
-            notification_task_deleted: "🗑️ Task {name} deleted.",
-            notification_recalculated: "🔄 Schedule recalculated based on dependencies",
-            notification_recalculation_error: "⚠️ Error during recalculation",
-            notification_png_exported: "🖼️ Chart exported to PNG with greyed weekends.",
-            notification_invalid_date_format: "⚠️ Invalid date format provided.",
-            notification_date_parse_error: "⚠️ Error parsing date.",
-            gantt_col_task: "Task", gantt_col_start_date: "Start", gantt_col_end_date: "End", gantt_col_duration: "Duration (d)",
-            gantt_col_progress: "Progress", gantt_col_members: "Members", gantt_col_no_members: "None",
-            custom_lightbox_title: "Task Details",
-            custom_lightbox_task_name_label: "Task name",
-            custom_lightbox_task_priority_label: "Task priority",
-            custom_lightbox_task_progress_label: "Progress",
-            custom_lightbox_task_start_label: "Start date",
-            custom_lightbox_task_end_label: "End date",
-            custom_lightbox_task_duration_label: "Duration (days)",
-            custom_lightbox_task_comments_label: "Comments",
-            task_comments_placeholder: "Add a comment...",
-            task_priority_project: "Default (Project)",
-            default_task_cahier_des_charges: "Specifications ({projectName})",
-            default_task_conception_pedagogique: "Instructional Design ({projectName})",
-            default_task_production_contenus: "Content Production ({projectName})",
-            default_task_developpement_interactif: "Interactive Development ({projectName})",
-            default_task_tests_validation: "Testing and Validation ({projectName})",
-            gantt_week_prefix: "W",
-        },
-        es: {
-            export: "💾 Exportar", import: "📂 Importar", members_section_title: "👥 Miembros",
-            member_name_placeholder: "Nombre del miembro", add_member_btn: "Añadir Miembro", edit_member_btn: "Editar Miembro",
-            projects_section_title: "📁 Proyectos", project_name_placeholder: "Nombre del proyecto",
-            project_description_placeholder: "Descripción", priority_low: "🟢 Baja", priority_medium: "🟡 Media", priority_high: "🔴 Alta",
-            create_project_btn: "Crear Proyecto", new_task_section_title: "✅ Nueva Tarea", select_project_option: "Seleccionar un proyecto",
-            task_name_placeholder: "Nombre de la tarea", task_duration_placeholder: "Duración (días laborables)", assigned_members_label: "Miembros asignados:",
-            add_task_btn: "Añadir Tarea", gantt_chart_title: "📊 Diagrama de Gantt", recalculate_btn: "🔄 Recalcular", export_png_btn: "🖼️ PNG",
-            edit_project_modal_title: "Editar Proyecto", manage_task_members_modal_title_prefix: "Gestionar miembros de la tarea",
-            notification_recalculated: "🔄 Horario recalculado según dependencias", 
-            notification_recalculation_error: "⚠️ Error durante el recálculo", 
-            gantt_col_task: "Tarea", gantt_col_start_date: "Inicio", gantt_col_end_date: "Fin", gantt_col_duration: "Duración (d)",
-            gantt_col_progress: "Progreso", gantt_col_members: "Miembros", gantt_col_no_members: "Ninguno",
-            custom_lightbox_title: "Detalles de la Tarea", save_btn: "Guardar", cancel_btn: "Cancelar", delete_btn: "Eliminar",
-            custom_lightbox_task_name_label: "Nombre de la tarea", custom_lightbox_task_priority_label: "Prioridad",
-            custom_lightbox_task_progress_label: "Progreso", custom_lightbox_task_start_label: "Fecha de inicio",
-            custom_lightbox_task_end_label: "Fecha de fin",
-            custom_lightbox_task_duration_label: "Duración (días)",
-            custom_lightbox_task_comments_label: "Comentarios",
-            task_comments_placeholder: "Añadir un comentario...",
-            task_priority_project: "Por defecto (Proyecto)",
-        },
-        de: {
-            export: "💾 Exportieren", import: "📂 Importieren", members_section_title: "👥 Mitglieder",
-            member_name_placeholder: "Mitgliedsname", add_member_btn: "Mitglied hinzufügen", edit_member_btn: "Mitglied bearbeiten",
-            projects_section_title: "📁 Projekte", project_name_placeholder: "Projektname",
-            project_description_placeholder: "Beschreibung", priority_low: "🟢 Niedrig", priority_medium: "🟡 Mittel", priority_high: "🔴 Hoch",
-            create_project_btn: "Projekt erstellen", new_task_section_title: "✅ Neue Aufgabe", select_project_option: "Projekt auswählen",
-            task_name_placeholder: "Aufgabenname", task_duration_placeholder: "Dauer (Arbeitstage)", assigned_members_label: "Zugeordnete Mitglieder:",
-            add_task_btn: "Aufgabe hinzufügen", gantt_chart_title: "📊 Gantt-Diagramm", recalculate_btn: "🔄 Neu berechnen", export_png_btn: "🖼️ PNG",
-            edit_project_modal_title: "Projekt bearbeiten", manage_task_members_modal_title_prefix: "Aufgabenmitglieder verwalten",
-            notification_recalculated: "🔄 Zeitplan basierend auf Abhängigkeiten neu berechnet", 
-            notification_recalculation_error: "⚠️ Fehler bei der Neuberechnung", 
-            gantt_col_task: "Aufgabe", gantt_col_start_date: "Start", gantt_col_end_date: "Ende", gantt_col_duration: "Dauer (T)",
-            gantt_col_progress: "Fortschritt", gantt_col_members: "Mitglieder", gantt_col_no_members: "Keine",
-            custom_lightbox_title: "Aufgabendetails", save_btn: "Speichern", cancel_btn: "Abbrechen", delete_btn: "Löschen",
-            custom_lightbox_task_name_label: "Aufgabenname", custom_lightbox_task_priority_label: "Priorität",
-            custom_lightbox_task_progress_label: "Fortschritt", custom_lightbox_task_start_label: "Startdatum",
-            custom_lightbox_task_end_label: "Enddatum",
-            custom_lightbox_task_duration_label: "Dauer (Tage)",
-            custom_lightbox_task_comments_label: "Kommentare",
-            task_comments_placeholder: "Kommentar hinzufügen...",
-            task_priority_project: "Standard (Projekt)",
-        },
-        it: {
-            export: "💾 Esporta", import: "📂 Importa", members_section_title: "👥 Membri",
-            member_name_placeholder: "Nome membro", add_member_btn: "Aggiungi Membro", edit_member_btn: "Modifica Membro",
-            projects_section_title: "📁 Progetti", project_name_placeholder: "Nome progetto",
-            project_description_placeholder: "Descrizione", priority_low: "🟢 Bassa", priority_medium: "🟡 Media", priority_high: "🔴 Alta",
-            create_project_btn: "Crea Progetto", new_task_section_title: "✅ Nuova Attività", select_project_option: "Seleziona un progetto",
-            task_name_placeholder: "Nome attività", task_duration_placeholder: "Durata (giorni lavorativi)", assigned_members_label: "Membri assegnati:",
-            add_task_btn: "Aggiungi Attività", gantt_chart_title: "📊 Diagramma di Gantt", recalculate_btn: "🔄 Ricalcola", export_png_btn: "🖼️ PNG",
-            edit_project_modal_title: "Modifica Progetto", manage_task_members_modal_title_prefix: "Gestisci membri attività",
-            notification_recalculated: "🔄 Pianificazione ricalcolata in base alle dipendenze",
-            notification_recalculation_error: "⚠️ Errore durante il ricalcolo",
-            gantt_col_task: "Attività", gantt_col_start_date: "Inizio", gantt_col_end_date: "Fine", gantt_col_duration: "Durata (g)",
-            gantt_col_progress: "Avanzamento", gantt_col_members: "Membri", gantt_col_no_members: "Nessuno",
-            custom_lightbox_title: "Dettagli Attività", save_btn: "Salva", cancel_btn: "Annulla", delete_btn: "Elimina",
-            custom_lightbox_task_name_label: "Nome attività", custom_lightbox_task_priority_label: "Priorità",
-            custom_lightbox_task_progress_label: "Avanzamento", custom_lightbox_task_start_label: "Data di inizio",
-            custom_lightbox_task_end_label: "Data di fine",
-            custom_lightbox_task_duration_label: "Durata (giorni)",
-            custom_lightbox_task_comments_label: "Commenti",
-            task_comments_placeholder: "Aggiungi un commento...",
-            task_priority_project: "Predefinito (Progetto)",
-        }
-    };
+    fr: {
+        export: "💾 Exporter",
+        import: "📂 Importer",
+        members_section_title: "👥 Membres",
+        member_name_placeholder: "Nom du membre",
+        add_member_btn: "Ajouter Membre",
+        edit_member_btn: "Modifier Membre",
+        projects_section_title: "📁 Projets",
+        project_name_placeholder: "Nom du projet",
+        project_description_placeholder: "Description",
+        priority_low: "🟢 Basse",
+        priority_medium: "🟡 Moyenne",
+        priority_high: "🔴 Haute",
+        create_project_btn: "Créer Projet",
+        new_task_section_title: "✅ Nouvelle Tâche",
+        select_project_option: "Sélectionner un projet",
+        task_name_placeholder: "Nom de la tâche",
+        task_duration_placeholder: "Durée (jours ouvrés)",
+        assigned_members_label: "Membres assignés :",
+        add_task_btn: "Ajouter Tâche",
+        gantt_chart_title: "📊 Diagramme de Gantt",
+        recalculate_btn: "🔄 Recalculer",
+        export_png_btn: "🖼️ PNG",
+        edit_project_modal_title: "Modifier Projet",
+        cancel_btn: "Annuler",
+        save_btn: "Sauvegarder",
+        delete_btn: "Supprimer",
+        manage_task_members_modal_title_prefix: "Gérer les membres de la tâche",
+        notification_export_success: "✅ Données exportées en JSON.",
+        notification_import_success: "✅ Données importées avec succès.",
+        notification_import_error: "⚠️ Erreur importation: ",
+        notification_invalid_json_format: "Format JSON invalide ou données/compteurs manquants.",
+        notification_member_added: "✅ Membre {name} ajouté.",
+        notification_member_edited: "✅ Membre {name} modifié.",
+        notification_member_exists: "⚠️ Ce membre existe déjà.",
+        notification_enter_name: "⚠️ Entrez un nom.",
+        notification_member_removed: "❌ Membre {name} supprimé.",
+        notification_visibility_updated: "✅ Visibilité de {name} mise à jour.",
+        notification_no_members: "<small class=\"text-muted\">Aucun membre</small>",
+        notification_project_name_required: "⚠️ Nom de projet requis.",
+        notification_project_exists: "⚠️ Ce projet existe déjà.",
+        notification_project_created: "🎉 Projet {name} créé avec tâches par défaut.",
+        notification_project_edited: "✅ Projet {name} modifié.",
+        notification_project_removed: "❌ Projet {name} supprimé.",
+        notification_fill_all_fields: "⚠️ Remplissez tous les champs (projet, nom, début, durée > 0).",
+        notification_invalid_project: "⚠️ Projet sélectionné invalide.",
+        notification_task_added: "✅ Tâche {name} ajoutée.",
+        notification_task_members_updated: "✅ Membres de la tâche {name} mis à jour.",
+        notification_task_updated: "✅ Tâche {name} mise à jour.",
+        notification_project_and_tasks_updated: "✅ Projet {name} et ses tâches mises à jour.",
+        notification_link_added: "🔗 Lien ajouté.",
+        notification_link_removed: "❌ Lien supprimé.",
+        notification_task_deleted: "🗑️ Tâche {name} supprimée.",
+        notification_recalculated: "🔄 Planning recalculé selon les dépendances",
+        notification_recalculation_error: "⚠️ Erreur lors du recalcul",
+        notification_png_exported: "🖼️ Diagramme exporté en PNG avec week-ends grisés.",
+        notification_invalid_date_format: "⚠️ Format de date invalide fourni.",
+        notification_date_parse_error: "⚠️ Erreur lors de l'analyse de la date.",
+        gantt_col_task: "Tâche",
+        gantt_col_start_date: "Début",
+        gantt_col_end_date: "Fin",
+        gantt_col_duration: "Durée (j)",
+        gantt_col_progress: "Avancement",
+        gantt_col_members: "Membres",
+        gantt_col_no_members: "Aucun",
+        custom_lightbox_title: "Modifier la Tâche",
+        custom_lightbox_task_name_label: "Nom de la tâche",
+        custom_lightbox_task_priority_label: "Priorité",
+        custom_lightbox_task_progress_label: "Avancement",
+        custom_lightbox_task_start_label: "Date de début",
+        custom_lightbox_task_end_label: "Date de fin",
+        custom_lightbox_task_duration_label: "Durée (jours)",
+        custom_lightbox_task_comments_label: "Commentaires",
+        task_comments_placeholder: "Ajouter un commentaire...",
+        task_priority_project: "Par défaut (Projet)",
+        default_task_cahier_des_charges: "Réalisation du cahier des charges ({projectName})",
+        default_task_conception_pedagogique: "Conception pédagogique ({projectName})",
+        default_task_production_contenus: "Production de contenus ({projectName})",
+        default_task_developpement_interactif: "Développement interactif ({projectName})",
+        default_task_tests_validation: "Tests et validation ({projectName})",
+        gantt_week_prefix: "Sem.",
+        task_start_placeholder: "Date de début"
+    },
+    en: {
+        export: "💾 Export",
+        import: "📂 Import",
+        members_section_title: "👥 Members",
+        member_name_placeholder: "Member name",
+        add_member_btn: "Add Member",
+        edit_member_btn: "Edit Member",
+        projects_section_title: "📁 Projects",
+        project_name_placeholder: "Project name",
+        project_description_placeholder: "Description",
+        priority_low: "🟢 Low",
+        priority_medium: "🟡 Medium",
+        priority_high: "🔴 High",
+        create_project_btn: "Create Project",
+        new_task_section_title: "✅ New Task",
+        select_project_option: "Select a project",
+        task_name_placeholder: "Task name",
+        task_duration_placeholder: "Duration (workdays)",
+        assigned_members_label: "Assigned members:",
+        add_task_btn: "Add Task",
+        gantt_chart_title: "📊 Gantt Chart",
+        recalculate_btn: "🔄 Recalculate",
+        export_png_btn: "🖼️ PNG",
+        edit_project_modal_title: "Edit Project",
+        cancel_btn: "Cancel",
+        save_btn: "Save",
+        delete_btn: "Delete",
+        manage_task_members_modal_title_prefix: "Manage task members",
+        notification_export_success: "✅ Data exported to JSON.",
+        notification_import_success: "✅ Data imported successfully.",
+        notification_import_error: "⚠️ Import error: ",
+        notification_invalid_json_format: "Invalid JSON format or missing data/counters.",
+        notification_member_added: "✅ Member {name} added.",
+        notification_member_edited: "✅ Member {name} updated.",
+        notification_member_exists: "⚠️ This member already exists.",
+        notification_enter_name: "⚠️ Enter a name.",
+        notification_member_removed: "❌ Member {name} removed.",
+        notification_visibility_updated: "✅ Visibility of {name} updated.",
+        notification_no_members: "<small class=\"text-muted\">No members</small>",
+        notification_project_name_required: "⚠️ Project name required.",
+        notification_project_exists: "⚠️ This project already exists.",
+        notification_project_created: "🎉 Project {name} created with default tasks.",
+        notification_project_edited: "✅ Project {name} updated.",
+        notification_project_removed: "❌ Project {name} removed.",
+        notification_fill_all_fields: "⚠️ Fill all fields (project, name, start, duration > 0).",
+        notification_invalid_project: "⚠️ Invalid project selected.",
+        notification_task_added: "✅ Task {name} added.",
+        notification_task_members_updated: "✅ Task {name} members updated.",
+        notification_task_updated: "✅ Task {name} updated.",
+        notification_project_and_tasks_updated: "✅ Project {name} and its tasks updated.",
+        notification_link_added: "🔗 Link added.",
+        notification_link_removed: "❌ Link removed.",
+        notification_task_deleted: "🗑️ Task {name} deleted.",
+        notification_recalculated: "🔄 Schedule recalculated based on dependencies",
+        notification_recalculation_error: "⚠️ Error during recalculation",
+        notification_png_exported: "🖼️ Chart exported to PNG with greyed weekends.",
+        notification_invalid_date_format: "⚠️ Invalid date format provided.",
+        notification_date_parse_error: "⚠️ Error parsing date.",
+        gantt_col_task: "Task",
+        gantt_col_start_date: "Start",
+        gantt_col_end_date: "End",
+        gantt_col_duration: "Duration (d)",
+        gantt_col_progress: "Progress",
+        gantt_col_members: "Members",
+        gantt_col_no_members: "None",
+        custom_lightbox_title: "Task Details",
+        custom_lightbox_task_name_label: "Task name",
+        custom_lightbox_task_priority_label: "Task priority",
+        custom_lightbox_task_progress_label: "Progress",
+        custom_lightbox_task_start_label: "Start date",
+        custom_lightbox_task_end_label: "End date",
+        custom_lightbox_task_duration_label: "Duration (days)",
+        custom_lightbox_task_comments_label: "Comments",
+        task_comments_placeholder: "Add a comment...",
+        task_priority_project: "Default (Project)",
+        default_task_cahier_des_charges: "Specifications ({projectName})",
+        default_task_conception_pedagogique: "Instructional Design ({projectName})",
+        default_task_production_contenus: "Content Production ({projectName})",
+        default_task_developpement_interactif: "Interactive Development ({projectName})",
+        default_task_tests_validation: "Testing and Validation ({projectName})",
+        gantt_week_prefix: "W",
+        task_start_placeholder: "Start date"
+    },
+    es: {
+        export: "💾 Exportar",
+        import: "📂 Importar",
+        members_section_title: "👥 Miembros",
+        member_name_placeholder: "Nombre del miembro",
+        add_member_btn: "Añadir Miembro",
+        edit_member_btn: "Editar Miembro",
+        projects_section_title: "📁 Proyectos",
+        project_name_placeholder: "Nombre del proyecto",
+        project_description_placeholder: "Descripción",
+        priority_low: "🟢 Baja",
+        priority_medium: "🟡 Media",
+        priority_high: "🔴 Alta",
+        create_project_btn: "Crear Proyecto",
+        new_task_section_title: "✅ Nueva Tarea",
+        select_project_option: "Seleccionar un proyecto",
+        task_name_placeholder: "Nombre de la tarea",
+        task_duration_placeholder: "Duración (días laborables)",
+        assigned_members_label: "Miembros asignados:",
+        add_task_btn: "Añadir Tarea",
+        gantt_chart_title: "📊 Diagrama de Gantt",
+        recalculate_btn: "🔄 Recalcular",
+        export_png_btn: "🖼️ PNG",
+        edit_project_modal_title: "Editar Proyecto",
+        cancel_btn: "Cancelar",
+        save_btn: "Guardar",
+        delete_btn: "Eliminar",
+        manage_task_members_modal_title_prefix: "Gestionar miembros de la tarea",
+        notification_recalculated: "🔄 Horario recalculado según dependencias",
+        notification_recalculation_error: "⚠️ Error durante el recálculo",
+        gantt_col_task: "Tarea",
+        gantt_col_start_date: "Inicio",
+        gantt_col_end_date: "Fin",
+        gantt_col_duration: "Duración (d)",
+        gantt_col_progress: "Progreso",
+        gantt_col_members: "Miembros",
+        gantt_col_no_members: "Ninguno",
+        custom_lightbox_title: "Detalles de la Tarea",
+        custom_lightbox_task_name_label: "Nombre de la tarea",
+        custom_lightbox_task_priority_label: "Prioridad",
+        custom_lightbox_task_progress_label: "Progreso",
+        custom_lightbox_task_start_label: "Fecha de inicio",
+        custom_lightbox_task_end_label: "Fecha de fin",
+        custom_lightbox_task_duration_label: "Duración (días)",
+        custom_lightbox_task_comments_label: "Comentarios",
+        task_comments_placeholder: "Añadir un comentario...",
+        task_priority_project: "Por defecto (Proyecto)",
+        task_start_placeholder: "Fecha de inicio"
+    },
+    de: {
+        export: "💾 Exportieren",
+        import: "📂 Importieren",
+        members_section_title: "👥 Mitglieder",
+        member_name_placeholder: "Mitgliedsname",
+        add_member_btn: "Mitglied hinzufügen",
+        edit_member_btn: "Mitglied bearbeiten",
+        projects_section_title: "📁 Projekte",
+        project_name_placeholder: "Projektname",
+        project_description_placeholder: "Beschreibung",
+        priority_low: "🟢 Niedrig",
+        priority_medium: "🟡 Mittel",
+        priority_high: "🔴 Hoch",
+        create_project_btn: "Projekt erstellen",
+        new_task_section_title: "✅ Neue Aufgabe",
+        select_project_option: "Projekt auswählen",
+        task_name_placeholder: "Aufgabenname",
+        task_duration_placeholder: "Dauer (Arbeitstage)",
+        assigned_members_label: "Zugeordnete Mitglieder:",
+        add_task_btn: "Aufgabe hinzufügen",
+        gantt_chart_title: "📊 Gantt-Diagramm",
+        recalculate_btn: "🔄 Neu berechnen",
+        export_png_btn: "🖼️ PNG",
+        edit_project_modal_title: "Projekt bearbeiten",
+        cancel_btn: "Abbrechen",
+        save_btn: "Speichern",
+        delete_btn: "Löschen",
+        manage_task_members_modal_title_prefix: "Aufgabenmitglieder verwalten",
+        notification_recalculated: "🔄 Zeitplan basierend auf Abhängigkeiten neu berechnet",
+        notification_recalculation_error: "⚠️ Fehler bei der Neuberechnung",
+        gantt_col_task: "Aufgabe",
+        gantt_col_start_date: "Start",
+        gantt_col_end_date: "Ende",
+        gantt_col_duration: "Dauer (T)",
+        gantt_col_progress: "Fortschritt",
+        gantt_col_members: "Mitglieder",
+        gantt_col_no_members: "Keine",
+        custom_lightbox_title: "Aufgabendetails",
+        custom_lightbox_task_name_label: "Aufgabenname",
+        custom_lightbox_task_priority_label: "Priorität",
+        custom_lightbox_task_progress_label: "Fortschritt",
+        custom_lightbox_task_start_label: "Startdatum",
+        custom_lightbox_task_end_label: "Enddatum",
+        custom_lightbox_task_duration_label: "Dauer (Tage)",
+        custom_lightbox_task_comments_label: "Kommentare",
+        task_comments_placeholder: "Kommentar hinzufügen...",
+        task_priority_project: "Standard (Projekt)",
+        task_start_placeholder: "Datum auswählen"
+    },
+    it: {
+        export: "💾 Esporta",
+        import: "📂 Importa",
+        members_section_title: "👥 Membri",
+        member_name_placeholder: "Nome membro",
+        add_member_btn: "Aggiungi Membro",
+        edit_member_btn: "Modifica Membro",
+        projects_section_title: "📁 Progetti",
+        project_name_placeholder: "Nome progetto",
+        project_description_placeholder: "Descrizione",
+        priority_low: "🟢 Bassa",
+        priority_medium: "🟡 Media",
+        priority_high: "🔴 Alta",
+        create_project_btn: "Crea Progetto",
+        new_task_section_title: "✅ Nuova Attività",
+        select_project_option: "Seleziona un progetto",
+        task_name_placeholder: "Nome attività",
+        task_duration_placeholder: "Durata (giorni lavorativi)",
+        assigned_members_label: "Membri assegnati:",
+        add_task_btn: "Aggiungi Attività",
+        gantt_chart_title: "📊 Diagramma di Gantt",
+        recalculate_btn: "🔄 Ricalcola",
+        export_png_btn: "🖼️ PNG",
+        edit_project_modal_title: "Modifica Progetto",
+        cancel_btn: "Annulla",
+        save_btn: "Salva",
+        delete_btn: "Elimina",
+        manage_task_members_modal_title_prefix: "Gestisci membri attività",
+        notification_recalculated: "🔄 Pianificazione ricalcolata in base alle dipendenze",
+        notification_recalculation_error: "⚠️ Errore durante il ricalcolo",
+        gantt_col_task: "Attività",
+        gantt_col_start_date: "Inizio",
+        gantt_col_end_date: "Fine",
+        gantt_col_duration: "Durata (g)",
+        gantt_col_progress: "Avanzamento",
+        gantt_col_members: "Membri",
+        gantt_col_no_members: "Nessuno",
+        custom_lightbox_title: "Dettagli Attività",
+        custom_lightbox_task_name_label: "Nome attività",
+        custom_lightbox_task_priority_label: "Priorità",
+        custom_lightbox_task_progress_label: "Avanzamento",
+        custom_lightbox_task_start_label: "Data di inizio",
+        custom_lightbox_task_end_label: "Data di fine",
+        custom_lightbox_task_duration_label: "Durata (giorni)",
+        custom_lightbox_task_comments_label: "Commenti",
+        task_comments_placeholder: "Aggiungi un commento...",
+        task_priority_project: "Predefinito (Progetto)",
+        task_start_placeholder: "Seleziona una data"
+    }
+};
+
 
     function translate(key, params = {}) {
         let translation = translations[currentLang]?.[key] || translations.fr[key] || key;
@@ -567,7 +736,7 @@
              gantt.i18n.setLocale(currentLang);
            } catch (e) {
              console.warn("DHTMLX locale for " + currentLang + " not fully available, falling back. Error: " + e.message);
-             if (currentLang !== 'en') { 
+             if (currentLang !== 'en') {
                 try { gantt.i18n.setLocale('en'); } catch (e2) { console.error("DHTMLX English locale failed: " + e2.message); }
              }
            }
@@ -585,7 +754,7 @@
         if (memberActionBtn) {
             memberActionBtn.textContent = translate(document.getElementById('editMemberId').value ? 'edit_member_btn' : 'add_member_btn');
         }
-        
+
         const taskProjectSelect = document.getElementById('taskProject');
         if (taskProjectSelect) {
             const firstOption = taskProjectSelect.querySelector('option[value=""]');
@@ -596,7 +765,6 @@
             option.textContent = translate(key);
         });
 
-        // Mettre en surbrillance le bouton de la langue active
         document.querySelectorAll('.language-selector button').forEach(button => {
             button.classList.remove('btn-primary', 'text-white');
             button.classList.add('btn-light');
@@ -606,73 +774,29 @@
             activeButton.classList.remove('btn-light');
             activeButton.classList.add('btn-primary', 'text-white');
         }
-        
-        if (gantt && gantt.config && gantt.locale) { 
+
+        if (gantt && gantt.config) {
             if (gantt.locale.labels) {
-                gantt.locale.labels.label_save = translate('save_btn'); 
+                gantt.locale.labels.label_save = translate('save_btn');
                 gantt.locale.labels.label_cancel = translate('cancel_btn');
                 gantt.locale.labels.label_delete = translate('delete_btn');
             }
-            
-            gantt.config.columns = [
-                { name: "text", label: translate('gantt_col_task'), width: 250, tree: true, resize: true },
-                { name: "start_date", label: translate('gantt_col_start_date'), align: "center", width: 90, resize: true },
-                { name: "end_date", label: translate('gantt_col_end_date'), align: "center", width: 90, resize: true, template: function(task) {
-                  if (task.type === gantt.config.types.project && task.$rendered_end) return gantt.templates.date_grid(task.$rendered_end);
-                  if (task.end_date) return gantt.templates.date_grid(task.end_date);
-                  return "";
-                } },
-                { name: "duration", label: translate('gantt_col_duration'), align: "center", width: 70, resize: true },
-                { name: "progress", label: translate('gantt_col_progress'), align: "center", width: 90, resize: true, template: task => Math.round(task.progress * 100) + "%" },
-                { name: "members", label: translate('gantt_col_members'), align: "center", width: 120, resize: true, template: task => {
-                  if (task.type === gantt.config.types.project) return "";
-                  let taskData = null;
-                  for (const projName in projects) {
-                      taskData = projects[projName].tasks.find(t => String(t.id) === String(task.id));
-                      if (taskData) break;
-                  }
-                  const memberIdsToShow = taskData ? (taskData.memberIds || []) : (task.memberIds || []); 
-                  if (!memberIdsToShow || memberIdsToShow.length === 0) return translate('gantt_col_no_members');
-                  const visibleMembers = memberIdsToShow.map(id => members.find(m => m.id === id)).filter(member => member && member.visible);
-                  return visibleMembers.length > 0 ? visibleMembers.map(member => `<span class="member-indicator" style="background-color:${member.color}; vertical-align: middle;" title="${member.name}"></span>`).join(" ") : translate('gantt_col_no_members');
-                }, onrender: function(task, node) { 
-                    if (task.type !== gantt.config.types.project) {
-                        node.style.cursor = "pointer";
-                        node.onclick = (event) => {
-                            event.stopPropagation();
-                            showTaskMembersLightbox(task.id); 
-                        };
-                    } else {
-                        node.style.cursor = ""; node.onclick = null;
-                    }
-                }}
-            ];
-            
-            gantt.config.scales = [ 
-                { unit: "year", step: 1, format: "%Y" },
-                { unit: "month", step: 1, format: "%F %Y" }, 
-                { unit: "week", step: 1, format: (date) => {
-                    return `${translate('gantt_week_prefix')} ${gantt.date.getISOWeek(date)} (${gantt.date.date_to_str(gantt.config.day_date || "%d %M")(date)})`;
-                  }
-                },
-                { unit: "day", step: 1, format: (gantt.config.day_date || "%d %M"), css: weekendCss }
-            ];
-
-            if (gantt.$container) { 
-                 gantt.render();
+            gantt.config.columns = getGanttColumns();
+            if (gantt.$container) {
+                gantt.render();
             }
         }
         renderMembers();
         renderProjects();
-        updateTaskMembers(); 
+        updateTaskMembers();
     }
 
     function setLanguage(lang) {
         currentLang = lang;
         applyTranslations();
+        setupDatePickers();
     }
 
-    // --- Utility Functions ---
     function adjustColor(color, percent) {
       let r = parseInt(color.substring(1, 3), 16);
       let g = parseInt(color.substring(3, 5), 16);
@@ -689,22 +813,22 @@
     function getContrastColor(hexColor) {
       if (!hexColor) return '#000000';
       hexColor = hexColor.replace('#', '');
-      if (hexColor.length === 3) { 
+      if (hexColor.length === 3) {
         hexColor = hexColor.split('').map(char => char + char).join('');
       }
-      if (hexColor.length !== 6) return '#000000'; 
+      if (hexColor.length !== 6) return '#000000';
       const r = parseInt(hexColor.substring(0, 2), 16);
       const g = parseInt(hexColor.substring(2, 4), 16);
       const b = parseInt(hexColor.substring(4, 6), 16);
       const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
       return luminance > 0.5 ? '#000000' : '#FFFFFF';
     }
-    
+
     function showNotification(messageKey, type = 'success', params = {}) {
       const message = translate(messageKey, params);
       const div = document.createElement('div');
       div.className = `notification ${type}`;
-      div.innerHTML = message; 
+      div.innerHTML = message;
 
       let container = document.querySelector('.notification-stack');
       if (!container) {
@@ -717,7 +841,123 @@
       setTimeout(() => div.remove(), 4000);
     }
 
-    // --- Data Management Functions (Sidebar) ---
+    function setupDatePickers() {
+        if (datePickers.length > 0) {
+            datePickers.forEach(picker => picker.destroy());
+            datePickers = [];
+        }
+
+        let locale;
+        switch (currentLang) {
+            case 'fr':
+                locale = "fr";
+                break;
+            case 'es':
+                locale = "es";
+                break;
+            case 'de':
+                locale = "de";
+                break;
+            case 'it':
+                locale = "it";
+                break;
+            default:
+                locale = null;
+        }
+		
+		if (locale) {
+			let localeScript = document.createElement('script');
+			localeScript.src = `https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/${locale}.js`;
+			localeScript.onload = function() {
+				initializeDatePickers(locale);
+			};
+			localeScript.onerror = function() {
+				console.error(`Failed to load Flatpickr locale script for ${locale}`);
+				initializeDatePickers('en'); // Utiliser l'anglais par défaut en cas d'échec
+			};
+			document.head.appendChild(localeScript);
+		} else {
+			// Initialiser directement avec l'anglais
+			initializeDatePickers('en');
+		  }
+		}
+		
+		function initializeDatePickers(locale) {
+			datePickers = [
+				flatpickr("#taskStart", {
+					locale: locale,
+					dateFormat: getDateFormatForLocale(locale),
+					onChange: function(selectedDates, dateStr, instance) {
+						console.log("Flatpickr initialized for #taskStart");
+					}
+				}),
+				flatpickr("#customLightboxTaskStart", {
+					locale: locale,
+					dateFormat: getDateFormatForLocale(locale),
+					onChange: updateLightboxEndDate
+				}),
+				flatpickr("#customLightboxTaskEnd", {
+					locale: locale,
+					dateFormat: getDateFormatForLocale(locale),
+					onChange: updateLightboxDuration
+				}),
+				flatpickr("#projectDeadline", {
+					locale: locale,
+					dateFormat: getDateFormatForLocale(locale)
+				}),
+				flatpickr("#editProjectDeadline", {
+					locale: locale,
+					dateFormat: getDateFormatForLocale(locale)
+				})
+			];
+
+		let localeScript = document.createElement('script');
+		localeScript.src = `https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/${locale}.js`;
+		localeScript.onload = function() {
+			datePickers = [
+				flatpickr("#taskStart", {
+					locale: locale,
+					dateFormat: getDateFormatForLocale(locale),
+					onChange: function(selectedDates, dateStr, instance) {
+					console.log("Flatpickr initialized for #taskStart");
+					}
+				}),
+				flatpickr("#customLightboxTaskStart", {
+					locale: locale,
+					dateFormat: getDateFormatForLocale(locale),
+					onChange: updateLightboxEndDate
+				}),
+				flatpickr("#customLightboxTaskEnd", {
+					locale: locale,
+					dateFormat: getDateFormatForLocale(locale),
+					onChange: updateLightboxDuration
+				}),
+				flatpickr("#projectDeadline", {
+					locale: locale,
+					dateFormat: getDateFormatForLocale(locale)
+				}),
+				flatpickr("#editProjectDeadline", {
+					locale: locale,
+					dateFormat: getDateFormatForLocale(locale)
+				})
+			];
+		};
+		document.head.appendChild(localeScript);
+	}
+
+    function getDateFormatForLocale(locale) {
+        switch (locale) {
+            case 'fr','es','it':
+				return "d/m/Y";
+            case 'de':
+                return "d.m.Y";
+			case 'en':
+				return "Y-m-d";
+            default:
+                return "d/m/Y";
+        }
+    }
+
     function addOrUpdateMember() {
       const editMemberId = document.getElementById('editMemberId').value;
       const name = document.getElementById('memberName').value.trim();
@@ -725,7 +965,7 @@
       const actionBtn = document.getElementById('memberActionBtn');
       if (!name) { showNotification('notification_enter_name', 'error'); return; }
       if (members.some(m => m.name === name && String(m.id) !== String(editMemberId))) { showNotification('notification_member_exists', 'error'); return; }
-      
+
       if (editMemberId) {
         const member = members.find(m => String(m.id) === String(editMemberId));
         if (member) { member.name = name; member.color = color; showNotification('notification_member_edited', 'success', {name}); }
@@ -736,7 +976,7 @@
         showNotification('notification_member_added', 'success', {name});
       }
       document.getElementById('memberName').value = ''; document.getElementById('memberColor').value = '#667eea';
-      renderMembers(); updateTaskMembers(); updateGantt(); 
+      renderMembers(); updateTaskMembers(); updateGantt();
     }
 
     function renderMembers() {
@@ -777,13 +1017,13 @@
       const member = members.find(m => m.id == memberId);
       if (member) {
         member.visible = !member.visible;
-        renderMembers(); 
-        updateGantt(); 
+        renderMembers();
+        updateGantt();
         showNotification('notification_visibility_updated', 'success', {name: member.name});
       }
     }
 
-    function updateTaskMembers() { 
+    function updateTaskMembers() {
       const container = document.getElementById('taskMembers');
       if (!container) return;
       container.innerHTML = members.length === 0 ? translate('notification_no_members') : members.map(m => `
@@ -792,14 +1032,14 @@
           <label class="form-check-label" for="task-member-${m.id}"> <span class="member-indicator" style="background-color: ${m.color};"></span> ${m.name} </label>
         </div>`).join('');
     }
-    
+
     function addProject() {
       const name = document.getElementById('projectName').value.trim();
       if (!name) { showNotification('notification_project_name_required', 'error'); return; }
       if (projects[name]) { showNotification('notification_project_exists', 'error'); return; }
       const projectId = `project_${name.replace(/\s+/g, '_')}_${Date.now()}`;
       const startDate = new Date().toISOString().split('T')[0];
-      
+
       const defaultTasksTemplates = [
         { key: 'default_task_cahier_des_charges', duration: 5 }, { key: 'default_task_conception_pedagogique', duration: 7 },
         { key: 'default_task_production_contenus', duration: 10 }, { key: 'default_task_developpement_interactif', duration: 8 },
@@ -815,7 +1055,7 @@
           progress: 0, project: name, parent: projectId, memberIds: members.length > 0 ? [members[Math.floor(Math.random() * members.length)].id] : [],
           priority: undefined, comments: ""
         };
-        let tempGanttTask = { start_date: currentDate, duration: taskTemplate.duration, $custom_data: true }; 
+        let tempGanttTask = { start_date: currentDate, duration: taskTemplate.duration, $custom_data: true };
         currentDate = gantt.calculateEndDate(tempGanttTask);
 
         if (gantt.config.skip_off_time) {
@@ -856,21 +1096,21 @@
           <button class="btn btn-sm btn-outline-danger" onclick="removeProject('${name}')">🗑️</button>
         </div>`;
       }).join('');
-      
+
       const currentSelectedProject = select.value;
       select.innerHTML = `<option value="">${translate('select_project_option')}</option>` + Object.keys(projects).map(name => `<option value="${name}">${name}</option>`).join('');
-      select.value = currentSelectedProject; 
+      select.value = currentSelectedProject;
     }
-    
+
     function toggleProjectVisibility(name) {
         if (projects[name]) {
             projects[name].visible = !projects[name].visible;
-            renderProjects(); 
+            renderProjects();
             updateGantt();
         }
     }
 
-    function editProject(name) { 
+    function editProject(name) {
       projectNameToEdit = name; const project = projects[name];
       if (project) {
           document.getElementById('editProjectName').value = project.name;
@@ -882,17 +1122,17 @@
       }
     }
 
-    function saveProjectEdit() { 
+    function saveProjectEdit() {
       const newName = document.getElementById('editProjectName').value.trim();
       if (!newName) { showNotification('notification_project_name_required', 'error'); return; }
-      if (projectNameToEdit && newName !== projectNameToEdit && projects[newName]) { 
-          showNotification('notification_project_exists', 'error'); return; 
-      }
-      if (!projectNameToEdit && projects[newName]) { 
+      if (projectNameToEdit && newName !== projectNameToEdit && projects[newName]) {
           showNotification('notification_project_exists', 'error'); return;
       }
-      
-      const oldProject = projects[projectNameToEdit] || { tasks: [], id: `project_${newName.replace(/\s+/g, '_')}_${Date.now()}`, visible: true }; 
+      if (!projectNameToEdit && projects[newName]) {
+          showNotification('notification_project_exists', 'error'); return;
+      }
+
+      const oldProject = projects[projectNameToEdit] || { tasks: [], id: `project_${newName.replace(/\s+/g, '_')}_${Date.now()}`, visible: true };
 
       const updatedProjectData = {
         ...oldProject, name: newName,
@@ -901,16 +1141,16 @@
       };
 
       if (projectNameToEdit && newName !== projectNameToEdit) {
-          updatedProjectData.tasks.forEach(task => { task.project = newName; task.parent = updatedProjectData.id; }); 
+          updatedProjectData.tasks.forEach(task => { task.project = newName; task.parent = updatedProjectData.id; });
           delete projects[projectNameToEdit];
-      } else if (!projectNameToEdit) { 
-          updatedProjectData.id = `project_${newName.replace(/\s+/g, '_')}_${Date.now()}`; 
+      } else if (!projectNameToEdit) {
+          updatedProjectData.id = `project_${newName.replace(/\s+/g, '_')}_${Date.now()}`;
       }
       projects[newName] = updatedProjectData;
-      projectNameToEdit = newName; 
+      projectNameToEdit = newName;
 
       renderProjects();
-      updateGantt(); 
+      updateGantt();
       showNotification('notification_project_edited', 'success', {name: newName});
       const modalInstance = bootstrap.Modal.getInstance(document.getElementById('editProjectModal'));
       if (modalInstance) modalInstance.hide();
@@ -927,7 +1167,7 @@
       showNotification('notification_project_removed', 'success', {name});
     }
 
-    function addTask() { 
+    function addTask() {
       const projectName = document.getElementById('taskProject').value;
       const taskName = document.getElementById('taskName').value.trim();
       const start = document.getElementById('taskStart').value;
@@ -953,10 +1193,10 @@
       showNotification('notification_task_added', 'success', {name: taskName});
     }
 
-    function showTaskMembersLightbox(taskId) { 
-      const ganttTask = gantt.getTask(taskId); 
+    function showTaskMembersLightbox(taskId) {
+      const ganttTask = gantt.getTask(taskId);
       if (!ganttTask || ganttTask.type === gantt.config.types.project) return;
-      
+
       let taskData = null;
       for (const projName in projects) {
           taskData = projects[projName].tasks.find(t => String(t.id) === String(taskId));
@@ -977,7 +1217,7 @@
       new bootstrap.Modal(document.getElementById('editTaskMembersModal')).show();
     }
 
-    function saveTaskMembers() { 
+    function saveTaskMembers() {
       const taskId = document.getElementById('editTaskId').value;
       let taskData = null;
       for (const projName in projects) {
@@ -988,13 +1228,12 @@
 
       const assignedMemberIds = Array.from(document.getElementById('editTaskMembersList').querySelectorAll('input:checked')).map(input => parseInt(input.value));
       taskData.memberIds = assignedMemberIds;
-      updateGantt(); 
-      showNotification('notification_task_members_updated', 'success', {name: taskData.name.replace(/^[🔴🟡🟢]\s*/, '')});
+      updateGantt();
+      showNotification('notification_task_members_updated', 'success', {name: taskData.name.replace(/^[?🟡🟢]\s*/, '')});
       const modalInstance = bootstrap.Modal.getInstance(document.getElementById('editTaskMembersModal'));
       if (modalInstance) modalInstance.hide();
     }
 
-    // --- Export/Import Functions ---
     function exportToJSON() {
       const data = { members, projects, allLinks, memberIdCounter, taskIdCounter, linkIdCounter, currentLang };
       const jsonString = JSON.stringify(data, null, 2);
@@ -1021,13 +1260,13 @@
           memberIdCounter = data.memberIdCounter; taskIdCounter = data.taskIdCounter; linkIdCounter = data.linkIdCounter;
           currentLang = data.currentLang || 'fr';
 
-          setLanguage(currentLang); 
-          renderMembers(); 
+          setLanguage(currentLang);
+          renderMembers();
           renderProjects();
-          updateTaskMembers(); 
-          updateGantt(); 
+          updateTaskMembers();
+          updateGantt();
           showNotification('notification_import_success');
-          document.getElementById('importJSON').value = ''; 
+          document.getElementById('importJSON').value = '';
         } catch (error) {
           console.error('Erreur importation JSON:', error);
           showNotification('notification_import_error', 'error', { message: error.message });
@@ -1036,7 +1275,6 @@
       reader.readAsText(file);
     }
 
-    // --- Custom Lightbox Functions ---
     function openCustomLightbox(id) {
         elementToFocusOnModalClose = document.activeElement;
         currentEditingTaskId = id;
@@ -1048,7 +1286,7 @@
 
         document.getElementById('customLightboxTaskId').value = id;
         document.getElementById('customLightboxTaskName').value = task.text.replace(/^[🔴🟡🟢]\s*/, '');
-        
+
         const initialStartDateStr = gantt.date.date_to_str("%Y-%m-%d")(task.start_date);
         document.getElementById('customLightboxTaskStart').value = initialStartDateStr;
 
@@ -1064,10 +1302,10 @@
                 taskDataStore = parentProjectDataStore.tasks.find(t => String(t.id) === String(id));
             }
         }
-        
+
         const priorityToSet = taskDataStore && typeof taskDataStore.priority !== 'undefined' ? taskDataStore.priority : 'project';
         document.getElementById('customLightboxTaskPriority').value = priorityToSet;
-        
+
         document.getElementById('customLightboxTaskComments').value = taskDataStore ? (taskDataStore.comments || "") : "";
 
         const membersContainer = document.getElementById('customLightboxTaskMembers');
@@ -1078,14 +1316,14 @@
                 <span class="member-indicator" style="background-color: ${m.color};"></span> ${m.name}
             </label>
             </div>`).join('');
-        
+
         document.getElementById('customTaskModalLabel').textContent = translate('custom_lightbox_title') + (task.text ? `: ${task.text.substring(0,30)}...` : '');
 
         if (!customTaskModalInstance) {
             customTaskModalInstance = new bootstrap.Modal(document.getElementById('customTaskModal'));
         }
         customTaskModalInstance.show();
-        applyTranslations(); 
+        applyTranslations();
     }
 
     function closeCustomLightbox() {
@@ -1121,7 +1359,7 @@
             closeCustomLightbox();
             return;
         }
-        
+
         gantt.batchUpdate(() => {
             const parseDate = gantt.date.str_to_date("%Y-%m-%d");
             const newStartDate = parseDate(startDateStr);
@@ -1133,12 +1371,12 @@
             ganttTask.text = taskName;
             ganttTask.duration = duration;
             ganttTask.progress = progress;
-            ganttTask.end_date = gantt.calculateEndDate(ganttTask); // On s'assure que la date de fin est recalculée.
+            ganttTask.end_date = gantt.calculateEndDate(ganttTask);
 
             gantt.updateTask(currentEditingTaskId);
         });
-        
-        gantt.refreshTask(currentEditingTaskId); // On force le rafraîchissement visuel de la tâche.
+
+        gantt.refreshTask(currentEditingTaskId);
 
         let parentProjectDataStore = Object.values(projects).find(p => String(p.id) === String(ganttTask.parent));
         if (parentProjectDataStore) {
@@ -1160,10 +1398,10 @@
 
     function deleteTaskFromCustomLightbox() {
         if (!currentEditingTaskId) return;
-        gantt.deleteTask(currentEditingTaskId); 
+        gantt.deleteTask(currentEditingTaskId);
         closeCustomLightbox();
     }
-    
+
     function updateLightboxEndDate() {
         const startDateStr = document.getElementById('customLightboxTaskStart').value;
         const duration = parseInt(document.getElementById('customLightboxTaskDuration').value, 10);
@@ -1196,7 +1434,42 @@
         }
     }
 
-    // --- Gantt Specific Functions ---
+    function getGanttColumns() {
+        return [
+            { name: "text", label: translate('gantt_col_task'), width: 250, tree: true, resize: true },
+            { name: "start_date", label: translate('gantt_col_start_date'), align: "center", width: 100, resize: true },
+            { name: "end_date", label: translate('gantt_col_end_date'), align: "center", width: 100, resize: true, template: function(task) {
+                if (task.type === gantt.config.types.project && task.$rendered_end) return gantt.templates.date_grid(task.$rendered_end);
+                if (task.end_date) return gantt.templates.date_grid(task.end_date);
+                return "";
+            }},
+            { name: "duration", label: translate('gantt_col_duration'), align: "center", width: 70, resize: true },
+            { name: "progress", label: translate('gantt_col_progress'), align: "center", width: 90, resize: true, template: task => Math.round(task.progress * 100) + "%" },
+            { name: "members", label: translate('gantt_col_members'), align: "center", width: 120, resize: true, template: task => {
+                if (task.type === gantt.config.types.project) return "";
+                let taskData = null;
+                for (const projName in projects) {
+                    taskData = projects[projName].tasks.find(t => String(t.id) === String(task.id));
+                    if (taskData) break;
+                }
+                const memberIdsToShow = taskData ? (taskData.memberIds || []) : (task.memberIds || []);
+                if (!memberIdsToShow || memberIdsToShow.length === 0) return translate('gantt_col_no_members');
+                const visibleMembers = memberIdsToShow.map(id => members.find(m => m.id === id)).filter(member => member && member.visible);
+                return visibleMembers.length > 0 ? visibleMembers.map(member => `<span class="member-indicator" style="background-color:${member.color}; vertical-align: middle;" title="${member.name}"></span>`).join(" ") : translate('gantt_col_no_members');
+            }, onrender: function(task, node) {
+                if (task.type !== gantt.config.types.project) {
+                    node.style.cursor = "pointer";
+                    node.onclick = (event) => {
+                        event.stopPropagation();
+                        showTaskMembersLightbox(task.id);
+                    };
+                } else {
+                    node.style.cursor = ""; node.onclick = null;
+                }
+            }}
+        ];
+    }
+
     function weekendCss(date) {
       return (date.getDay() === 0 || date.getDay() === 6) ? "weekend" : "";
     }
@@ -1213,48 +1486,82 @@
       gantt.config.auto_scheduling = true;
       gantt.config.auto_scheduling_strict = true;
       gantt.config.auto_scheduling_initial = true;
-
       gantt.config.date_format = "%Y-%m-%d";
-      gantt.setWorkTime({ day: 0, hours: false }); 
-      gantt.setWorkTime({ day: 6, hours: false }); 
-      
-      gantt.config.drag_links = true;
-      gantt.config.drag_move = true;
-      gantt.config.drag_resize = true;
-      gantt.config.link_arrow_size = 2; 
-      gantt.config.links = { 
-        finish_to_start: "0", start_to_start: "1", finish_to_finish: "2", start_to_finish: "3"
-      };
       gantt.config.grid_resize = true;
-      gantt.config.drag_progress = true; 
-      gantt.config.tooltip_timeout = 30; 
+      gantt.config.drag_progress = true;
+      gantt.config.tooltip_timeout = 30;
+      gantt.setWorkTime({ day: 0, hours: false });
+      gantt.setWorkTime({ day: 6, hours: false });
+
+      gantt.templates.date_grid = function(date){
+          let format;
+          switch(currentLang) {
+              case 'fr':
+                  format = "%d/%m/%Y";
+                  break;
+              case 'es':
+                  format = "%d/%m/%Y";
+                  break;
+              case 'it':
+                  format = "%d/%m/%Y";
+                  break;
+              case 'de':
+                  format = "%d.%m.%Y";
+                  break;
+              default:
+                  format = "%Y-%m-%d";
+          }
+          return gantt.date.date_to_str(format)(date);
+      };
+
+      gantt.config.columns = getGanttColumns();
+
+      gantt.config.scales = [
+          { unit: "year", step: 1, format: "%Y" },
+          { unit: "month", step: 1, format: "%F %Y" },
+          { unit: "week", step: 1, format: (date) => {
+              const weekStartDateStr = gantt.date.date_to_str(currentLang === 'fr' ? "%d/%m" : "%d %M")(date);
+              return `${translate('gantt_week_prefix')} ${gantt.date.getISOWeek(date)} (${weekStartDateStr})`;
+            }
+          },
+          { unit: "day", step: 1, format: "%d", css: weekendCss }
+      ];
+
+      if (gantt.ext.zoom) {
+          gantt.ext.zoom.init({
+              levels: [
+                  { name: "day", scale_height: 50, min_column_width: 30, scales: [ { unit: "day", step: 1, format: (date) => gantt.date.date_to_str(currentLang === 'fr' ? "%d/%m" : "%d %M")(date), css: weekendCss }, { unit: "hour", step: 6, format: "%Hh" } ] },
+                  { name: "week", scale_height: 50, min_column_width: 70, scales: [ { unit: "week", step: 1, format: (date) => `${translate('gantt_week_prefix')} ${gantt.date.getISOWeek(date)}` }, { unit: "day", step: 1, format: "%d", css: weekendCss } ] },
+                  { name: "month", scale_height: 50, min_column_width: 100, scales: [ { unit: "month", step: 1, format: "%F %Y" }, { unit: "week", step: 1, format: (date) => `${translate('gantt_week_prefix')} ${gantt.date.getISOWeek(date)}` } ] },
+                  { name: "quarter", scale_height: 50, min_column_width: 90, scales: [ { unit: "quarter", step: 1, format: function(date) { return "T" + Math.ceil((date.getMonth() + 1) / 3) + " " + date.getFullYear(); } }, { unit: "month", step: 1, format: "%M" } ] },
+                  { name: "year", scale_height: 50, min_column_width: 50, scales: [ { unit: "year", step: 1, format: "%Y" } ] }
+              ]
+          });
+      }
 
       gantt.templates.task_text = function(start, end, task){
           let priorityEmoji = "";
           let displayPriority = null;
-
           if (task.type === gantt.config.types.project) {
               const projectData = Object.values(projects).find(p => String(p.id) === String(task.id));
               if (projectData) displayPriority = projectData.priority;
-          } else { 
+          } else {
               let taskDataInStore = null;
-              if (task.parent) { 
+              if (task.parent) {
                   const parentProjectData = Object.values(projects).find(p => String(p.id) === String(task.parent));
                   if (parentProjectData) {
                       taskDataInStore = parentProjectData.tasks.find(t => String(t.id) === String(task.id));
                       if (taskDataInStore && typeof taskDataInStore.priority !== 'undefined' && taskDataInStore.priority !== 'project') {
-                          displayPriority = taskDataInStore.priority; 
+                          displayPriority = taskDataInStore.priority;
                       } else if (parentProjectData) {
-                          displayPriority = parentProjectData.priority; 
+                          displayPriority = parentProjectData.priority;
                       }
                   }
               }
           }
-
           if (displayPriority === "high") priorityEmoji = "🔴 ";
           else if (displayPriority === "medium") priorityEmoji = "🟡 ";
           else if (displayPriority === "low") priorityEmoji = "🟢 ";
-          
           return priorityEmoji + task.text;
       };
 
@@ -1263,14 +1570,13 @@
           if (task.type === gantt.config.types.project) {
               const projectData = Object.values(projects).find(p => String(p.id) === String(task.id));
               if (projectData) rowClass += ` priority-${projectData.priority}`;
-          } else { 
-              let taskDataInStore = null;
+          } else {
               let effectivePriority = 'low';
               if (task.parent) {
                   const parentProjectData = Object.values(projects).find(p => String(p.id) === String(task.parent));
                   if (parentProjectData) {
                       effectivePriority = parentProjectData.priority;
-                      taskDataInStore = parentProjectData.tasks.find(t => String(t.id) === String(task.id));
+                      const taskDataInStore = parentProjectData.tasks.find(t => String(t.id) === String(task.id));
                       if (taskDataInStore && typeof taskDataInStore.priority !== 'undefined' && taskDataInStore.priority !== 'project') {
                           effectivePriority = taskDataInStore.priority;
                       }
@@ -1285,22 +1591,22 @@
         let task_class = "";
         if(task.type == gantt.config.types.project){
             const projectData = Object.values(projects).find(p => String(p.id) === String(task.id));
-            if (projectData) task_class += ` project-priority-${projectData.priority}`; 
+            if (projectData) task_class += ` project-priority-${projectData.priority}`;
         }
         return task_class.trim();
       };
 
-      gantt.templates.timeline_cell_class = function(item, date) { 
+      gantt.templates.timeline_cell_class = function(item, date) {
         return weekendCss(date);
       };
-      
+
       gantt.templates.tooltip_text = function(start, end, task){
         let html = `<b>${task.text.replace(/^[🔴🟡🟢]\s*/, '')}</b><br/>`;
         html += `<b>${translate('gantt_col_start_date')}:</b> ${gantt.templates.date_grid(start)}<br/>`;
-        html += `<b>${translate('gantt_col_end_date')}:</b> ${gantt.templates.date_grid(gantt.calculateEndDate(task))}<br/>`; 
+        html += `<b>${translate('gantt_col_end_date')}:</b> ${gantt.templates.date_grid(gantt.calculateEndDate(task))}<br/>`;
         html += `<b>${translate('gantt_col_duration')}:</b> ${task.duration} ${translate('gantt_col_duration').includes('(j)') ? 'j' : 'd'}<br/>`;
         html += `<b>${translate('gantt_col_progress')}:</b> ${Math.round(task.progress * 100)}%<br/>`;
-        
+
         let taskDataStore = null;
         if (task.type !== gantt.config.types.project) {
             if (task.parent) {
@@ -1325,7 +1631,7 @@
       };
 
       gantt.attachEvent("onBeforeTaskDisplay", function(id, task) {
-        let baseColor = "#007bff"; 
+        let baseColor = "#007bff";
         if (task.type === gantt.config.types.project) {
             const projectData = Object.values(projects).find(p => String(p.id) === String(id));
             if (projectData && projectData.color) baseColor = projectData.color;
@@ -1333,13 +1639,13 @@
             const parentProjectData = Object.values(projects).find(p => String(p.id) === String(task.parent));
             if (parentProjectData && parentProjectData.color) baseColor = parentProjectData.color;
         }
-        if (typeof baseColor !== 'string' || !baseColor.match(/^#[0-9a-f]{6}$/i)) baseColor = "#007bff"; 
-        
-        task.color = task.progress >= 1 ? "#28A745" : adjustColor(baseColor, -20); 
+        if (typeof baseColor !== 'string' || !baseColor.match(/^#[0-9a-f]{6}$/i)) baseColor = "#007bff";
+
+        task.color = task.progress >= 1 ? "#28A745" : adjustColor(baseColor, -20);
         task.style = `border-color: ${adjustColor(baseColor, -10)};`;
         if (task.type === gantt.config.types.project) {
-            task.progressColor = task.progress >= 1 ? "#28A745" : adjustColor(baseColor, -10); 
-            task.color = baseColor; 
+            task.progressColor = task.progress >= 1 ? "#28A745" : adjustColor(baseColor, -10);
+            task.color = baseColor;
         }
         task.textColor = getContrastColor(task.color);
         return true;
@@ -1349,13 +1655,13 @@
         const task = gantt.getTask(id);
         if (task && task.type === gantt.config.types.project) {
             const projectData = Object.values(projects).find(p => p.id === id);
-            if (projectData) editProject(projectData.name); 
-            return false; 
+            if (projectData) editProject(projectData.name);
+            return false;
         }
         openCustomLightbox(id);
-        return false; 
+        return false;
       });
-      
+
       gantt.attachEvent("onAfterTaskUpdate", function(id, task) {
         syncInternalDataStore(id, task);
       });
@@ -1364,57 +1670,43 @@
         if (!allLinks.find(l => String(l.source) === String(link.source) && String(l.target) === String(link.target) && String(l.type) === String(link.type))) {
           const newLink = { id: String(linkIdCounter++), source: String(link.source), target: String(link.target), type: String(link.type) };
           allLinks.push(newLink);
-          gantt.changeLinkId(id, newLink.id); 
+          gantt.changeLinkId(id, newLink.id);
           showNotification("notification_link_added");
         }
         return true;
       });
 
-      gantt.attachEvent("onAfterLinkDelete", function(id, link) { 
+      gantt.attachEvent("onAfterLinkDelete", function(id, link) {
         allLinks = allLinks.filter(l => String(l.id) !== String(id));
         showNotification("notification_link_removed");
         return true;
       });
 
-      gantt.attachEvent("onBeforeTaskDelete", function(id, task) { 
+      gantt.attachEvent("onBeforeTaskDelete", function(id, task) {
         allLinks = allLinks.filter(link => String(link.source) !== String(id) && String(link.target) !== String(id));
-        
+
         if (task.type === gantt.config.types.project) {
             const parentProjectKey = Object.keys(projects).find(key => String(projects[key].id) === String(id));
             if (parentProjectKey) {
                 delete projects[parentProjectKey];
-                renderProjects(); 
+                renderProjects();
             }
-        } else if (task.parent) { 
+        } else if (task.parent) {
             const parentProjectData = Object.values(projects).find(p => String(p.id) === String(task.parent));
             if (parentProjectData && parentProjectData.tasks) {
                 parentProjectData.tasks = parentProjectData.tasks.filter(t => String(t.id) !== String(id));
             }
         }
-        return true; 
+        return true;
       });
 
       gantt.attachEvent("onAfterTaskDelete", function(id, task) {
-        showNotification('notification_task_deleted', 'success', {name: task.text.replace(/^[🔴�🟢]\s*/, '')});
+        showNotification('notification_task_deleted', 'success', {name: task.text.replace(/^[🔴🟡🟢]\s*/, '')});
         syncProjectProgress(task.parent);
       });
 
       gantt.init("gantt_here");
-      if (gantt.ext.zoom) {
-        gantt.ext.zoom.init({
-            levels: [
-            { name: "day", scale_height: 50, min_column_width: 30, scales: [ { unit: "day", step: 1, format: "%d %M", css: weekendCss }, { unit: "hour", step: 6, format: "%Hh" } ] },
-            { name: "week", scale_height: 50, min_column_width: 70, scales: [ { unit: "week", step: 1, format: (date) => `${translate('gantt_week_prefix')} ${gantt.date.getISOWeek(date)} (${gantt.date.date_to_str(gantt.config.day_date || "%d %M")(date)})` }, { unit: "day", step: 1, format: "%d", css: weekendCss } ] },
-            { name: "month", scale_height: 50, min_column_width: 100, scales: [ { unit: "month", step: 1, format: "%F %Y" }, { unit: "week", step: 1, format: (date) => `${translate('gantt_week_prefix')} ${gantt.date.getISOWeek(date)}` } ] },
-            { name: "quarter", scale_height: 50, min_column_width: 90, scales: [ { unit: "quarter", step: 1, format: function(date) { return "T" + Math.ceil((date.getMonth() + 1) / 3) + " " + date.getFullYear(); } }, { unit: "month", step: 1, format: "%M" } ] },
-            { name: "year", scale_height: 50, min_column_width: 50, scales: [ { unit: "year", step: 1, format: "%Y" }, { unit: "quarter", step: 1, format: function(date) { return "T" + Math.ceil((date.getMonth() + 1) / 3); } } ] }
-            ]
-        });
-        gantt.ext.zoom.setLevel("week");
-      } else {
-        console.error("Gantt zoom plugin is not initialized.");
-      }
-      applyTranslations(); 
+      applyTranslations();
     }
 
     function syncInternalDataStore(id, task) {
@@ -1424,7 +1716,7 @@
 
         if (isProjectTask) {
             projectDataStore = Object.values(projects).find(p => String(p.id) === String(id));
-        } else if (task.parent) { 
+        } else if (task.parent) {
             projectDataStore = Object.values(projects).find(p => String(p.id) === String(task.parent));
             if (projectDataStore) {
                 taskDataInStore = projectDataStore.tasks.find(t => String(t.id) === String(id));
@@ -1439,10 +1731,10 @@
                     projectDataStore.name = newNameFromGantt;
                     projects[newNameFromGantt] = projectDataStore;
                     delete projects[currentNameInStore];
-                    projectDataStore.tasks.forEach(t => t.project = newNameFromGantt); 
-                    renderProjects(); 
+                    projectDataStore.tasks.forEach(t => t.project = newNameFromGantt);
+                    renderProjects();
                 }
-            } else if (taskDataInStore) { 
+            } else if (taskDataInStore) {
                 taskDataInStore.name = task.text.replace(/^[🔴🟡🟢]\s*/, '');
                 taskDataInStore.start = gantt.date.date_to_str(gantt.config.date_format)(task.start_date);
                 taskDataInStore.duration = task.duration;
@@ -1451,7 +1743,7 @@
         }
         syncProjectProgress(task.parent);
     }
-    
+
     function syncProjectProgress(projectId) {
         if (!projectId) return;
 
@@ -1460,10 +1752,10 @@
             const projectDataStore = Object.values(projects).find(p => String(p.id) === String(projectId));
             if(projectDataStore) {
                 const visibleTasks = projectDataStore.tasks.filter(taskInFilter => {
-                   if (!taskInFilter.memberIds || taskInFilter.memberIds.length === 0) return true; 
+                   if (!taskInFilter.memberIds || taskInFilter.memberIds.length === 0) return true;
                     return taskInFilter.memberIds.some(memberId => {
                         const member = members.find(m => m.id === memberId);
-                        return member ? member.visible : false; 
+                        return member ? member.visible : false;
                     });
                 });
                 projectGanttTask.progress = calculateSummaryProgress(visibleTasks);
@@ -1472,7 +1764,6 @@
         }
     }
 
-    // --- Gantt Data & Display Update ---
     function updateGantt() {
       if (!gantt || !gantt.batchUpdate || !gantt.parse) {
           console.warn("Gantt not fully initialized for updateGantt");
@@ -1483,25 +1774,25 @@
         let tasksToParse = [];
         Object.keys(projects).forEach(projectNameKey => {
           const project = projects[projectNameKey];
-          if (project.visible) { 
+          if (project.visible) {
             const projectTasksRaw = project.tasks || [];
-            
+
             const filteredTasksForDisplay = projectTasksRaw.filter(task => {
-              if (!task.memberIds || task.memberIds.length === 0) return true; 
+              if (!task.memberIds || task.memberIds.length === 0) return true;
               return task.memberIds.some(id => {
                 const member = members.find(m => m.id === id);
-                return member ? member.visible : false; 
+                return member ? member.visible : false;
               });
             });
 
-            const projectProgress = calculateSummaryProgress(filteredTasksForDisplay); 
+            const projectProgress = calculateSummaryProgress(filteredTasksForDisplay);
 
             tasksToParse.push({
-              id: project.id, text: project.name, 
+              id: project.id, text: project.name,
               progress: projectProgress, open: true, type: gantt.config.types.project,
             });
 
-            filteredTasksForDisplay.forEach(task => { 
+            filteredTasksForDisplay.forEach(task => {
               tasksToParse.push({
                 id: task.id, text: task.name, start_date: task.start,
                 duration: task.duration, progress: task.progress, parent: project.id,
@@ -1509,24 +1800,23 @@
             });
           }
         });
-        
+
         const visibleTaskIds = new Set(tasksToParse.map(t => String(t.id)));
         const filteredLinks = allLinks.filter(link => visibleTaskIds.has(String(link.source)) && visibleTaskIds.has(String(link.target)));
-        
+
         gantt.parse({ data: tasksToParse, links: filteredLinks });
       });
     }
 
-    function calculateSummaryProgress(tasks) { 
+    function calculateSummaryProgress(tasks) {
       if (!tasks || tasks.length === 0) return 0;
       const totalProgress = tasks.reduce((sum, task) => sum + (parseFloat(task.progress) || 0), 0);
       return totalProgress / tasks.length;
     }
-    
-    // --- Zoom & Export ---
+
     function ganttZoomIn() { if(gantt && gantt.ext && gantt.ext.zoom) gantt.ext.zoom.zoomIn(); }
     function ganttZoomOut() { if(gantt && gantt.ext && gantt.ext.zoom) gantt.ext.zoom.zoomOut(); }
-    
+
     function manualRecalculate() {
       try {
         gantt.batchUpdate(() => {
@@ -1566,14 +1856,11 @@
     function exportGanttToPNG() {
         if (!gantt) return;
 
-        // Définir les styles nécessaires pour que l'export ressemble à l'affichage
         const styles = `
             <style>
-                /* Style pour griser les week-ends dans la timeline */
                 .gantt_task_cell.weekend {
                     background-color: #f0f0f0 !important;
                 }
-                /* Style pour les indicateurs de couleur des membres dans la grille */
                 .member-indicator {
                     width: 14px;
                     height: 14px;
@@ -1583,11 +1870,9 @@
                     vertical-align: middle;
                     box-shadow: 0 1px 2px rgba(0,0,0,0.2);
                 }
-                /* S'assurer que le contenu de la cellule des membres est centré */
                 .gantt_grid_data .gantt_cell[data-column-name=members] {
                     text-align: center;
                 }
-                /* Styles de base pour les barres de tâches pour un meilleur rendu */
                 .gantt_task_line {
                     border-radius: 4px !important;
                 }
@@ -1599,13 +1884,12 @@
 
         gantt.exportToPNG({
             name: "gantt_diagram.png",
-            raw: true, // `raw: true` est crucial pour rendre le HTML (comme les points de couleur)
-            header: styles // Inclure nos styles personnalisés dans l'export
+            raw: true,
+            header: styles
         });
         showNotification("notification_png_exported");
     }
 
-    // --- Initial Data (Example) ---
     function initDummyData() {
       members = [
         { id: 1, name: "Alice", color: "#FF5733", visible: true }, { id: 2, name: "Bob", color: "#33C4FF", visible: true },
@@ -1613,8 +1897,8 @@
       ];
       memberIdCounter = 4;
       linkIdCounter = 1;
-      taskIdCounter = 1; 
-      projects = {}; 
+      taskIdCounter = 1;
+      projects = {};
 
       const projectAlphaName = "Projet Alpha";
       const projectIdAlpha = `project_alpha_${Date.now()}`;
@@ -1632,9 +1916,9 @@
           progress: taskData.progress, project: projectAlphaName, parent: projectIdAlpha, memberIds: taskData.memberIds,
           priority: taskData.priority, comments: taskData.comments
         };
-        let tempGanttTaskForCalc = {start_date: currentDateAlpha, duration: taskData.duration, $dummy: true}; 
+        let tempGanttTaskForCalc = {start_date: currentDateAlpha, duration: taskData.duration, $dummy: true};
         currentDateAlpha = gantt.calculateEndDate(tempGanttTaskForCalc);
-        if(gantt.config.skip_off_time) { 
+        if(gantt.config.skip_off_time) {
             while(!gantt.isWorkTime({date: currentDateAlpha, unit: "day", task: tempGanttTaskForCalc})) {
                 currentDateAlpha.setDate(currentDateAlpha.getDate() + 1);
             }
@@ -1642,12 +1926,12 @@
         return task;
       });
       projects[projectAlphaName] = {
-        name: projectAlphaName, description: "Module e-learning sur la gestion de projet", deadline: "2025-07-30", 
+        name: projectAlphaName, description: "Module e-learning sur la gestion de projet", deadline: "2025-07-30",
         priority: "medium", color: "#8E44AD", tasks: alphaTasks, id: projectIdAlpha, visible: true
       };
 
       const projectBetaName = "Projet Beta";
-      const projectIdBeta = `project_beta_${Date.now() + 1}`; 
+      const projectIdBeta = `project_beta_${Date.now() + 1}`;
       const betaTasksData = [
         { nameKey: 'default_task_cahier_des_charges', duration: 5, progress: 1, memberIds: [1], priority: undefined, comments: ""},
         { nameKey: 'default_task_conception_pedagogique', duration: 7, progress: 0.75, memberIds: [1, 3], priority: "high", comments: ""},
@@ -1671,30 +1955,26 @@
         return task;
       });
       projects[projectBetaName] = {
-        name: projectBetaName, description: "Formation interactive sur le marketing digital", deadline: "2025-08-15", 
+        name: projectBetaName, description: "Formation interactive sur le marketing digital", deadline: "2025-08-15",
         priority: "low", color: "#3498DB", tasks: betaTasks, id: projectIdBeta, visible: true
       };
 
-      allLinks = [ 
+      allLinks = [
         { id: String(linkIdCounter++), source: projects[projectAlphaName].tasks[0].id, target: projects[projectAlphaName].tasks[1].id, type: gantt.config.links.finish_to_start },
         { id: String(linkIdCounter++), source: projects[projectAlphaName].tasks[1].id, target: projects[projectAlphaName].tasks[2].id, type: gantt.config.links.finish_to_start },
         { id: String(linkIdCounter++), source: projects[projectBetaName].tasks[0].id, target: projects[projectBetaName].tasks[1].id, type: gantt.config.links.finish_to_start },
       ];
     }
-    
-    // --- DOMContentLoaded ---
-    document.addEventListener('DOMContentLoaded', () => {
-      initGantt(); 
-      initDummyData(); 
-      
-      setLanguage(currentLang); 
-      
-      renderMembers(); 
-      renderProjects();
-      updateTaskMembers(); 
 
-      updateGantt(); 
-      
+    document.addEventListener('DOMContentLoaded', () => {
+      initGantt();
+      initDummyData();
+      setLanguage(currentLang);
+      renderMembers();
+      renderProjects();
+      updateTaskMembers();
+      updateGantt();
+
       const modalElement = document.getElementById('customTaskModal');
       if (modalElement) {
         customTaskModalInstance = new bootstrap.Modal(modalElement);
