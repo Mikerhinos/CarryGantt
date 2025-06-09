@@ -888,7 +888,6 @@
 					locale: locale,
 					dateFormat: getDateFormatForLocale(locale),
 					onChange: function(selectedDates, dateStr, instance) {
-						console.log("Flatpickr initialized for #taskStart");
 					}
 				}),
 				flatpickr("#customLightboxTaskStart", {
@@ -919,7 +918,6 @@
 					locale: locale,
 					dateFormat: getDateFormatForLocale(locale),
 					onChange: function(selectedDates, dateStr, instance) {
-					console.log("Flatpickr initialized for #taskStart");
 					}
 				}),
 				flatpickr("#customLightboxTaskStart", {
@@ -1167,31 +1165,106 @@
       showNotification('notification_project_removed', 'success', {name});
     }
 
-    function addTask() {
-      const projectName = document.getElementById('taskProject').value;
-      const taskName = document.getElementById('taskName').value.trim();
-      const start = document.getElementById('taskStart').value;
-      const duration = parseInt(document.getElementById('taskDuration').value);
-      const progress = parseFloat(document.getElementById('taskProgress').value);
-      const assignedMemberIds = Array.from(document.getElementById('taskMembers').querySelectorAll('input:checked')).map(input => parseInt(input.value));
-      if (!projectName || !taskName || !start || isNaN(duration) || duration <= 0) {
-        showNotification('notification_fill_all_fields', 'error'); return;
-      }
-      const projectData = projects[projectName];
-      if (!projectData) { showNotification('notification_invalid_project', 'error'); return; }
-      const task = {
-        id: `task_${taskIdCounter++}`, name: taskName, start: start, duration: duration, progress: progress,
-        project: projectName, parent: projectData.id, memberIds: assignedMemberIds,
-        priority: undefined, comments: ""
-      };
-      projectData.tasks.push(task);
-      document.getElementById('taskProject').value = ''; document.getElementById('taskName').value = '';
-      document.getElementById('taskStart').value = ''; document.getElementById('taskDuration').value = '';
-      document.getElementById('taskProgress').value = '0';
-      document.getElementById('taskMembers').querySelectorAll('input:checked').forEach(input => input.checked = false);
-      updateGantt();
-      showNotification('notification_task_added', 'success', {name: taskName});
-    }
+	function parseDate(dateStr, format) {
+		// Déterminer les positions des composants de la date dans le format
+		const dayIndex = format.indexOf('d');
+		const monthIndex = format.indexOf('m');
+		const yearIndex = format.indexOf('Y');
+
+		// Extraire les composants de la date en fonction du format
+		const day = parseInt(dateStr.substring(dayIndex, dayIndex + 2), 10);
+		const month = parseInt(dateStr.substring(monthIndex, monthIndex + 2), 10) - 1; // Les mois sont indexés à partir de 0 en JavaScript
+		const year = parseInt(dateStr.substring(yearIndex, yearIndex + 4), 10);
+
+		// Créer un objet Date
+		const date = new Date(year, month, day);
+
+		// Vérifier si la date est valide
+		if (isNaN(date.getTime())) {
+			throw new Error("Invalid date");
+		}
+
+		return date;
+	}
+
+	function addTask() {
+		const projectName = document.getElementById('taskProject').value;
+		const taskName = document.getElementById('taskName').value.trim();
+		const duration = parseInt(document.getElementById('taskDuration').value);
+		const progress = parseFloat(document.getElementById('taskProgress').value);
+		const assignedMemberIds = Array.from(document.getElementById('taskMembers').querySelectorAll('input:checked')).map(input => parseInt(input.value));
+
+		// Get the Flatpickr instance for taskStart
+		const taskStartPicker = datePickers.find(picker => picker.element.id === 'taskStart');
+		if (!taskStartPicker || taskStartPicker.selectedDates.length === 0) {
+			showNotification('notification_fill_all_fields', 'error');
+			return;
+		}
+		const startDate = taskStartPicker.selectedDates[0];
+
+		// Validate other inputs
+		if (!projectName || !taskName || isNaN(duration) || duration <= 0) {
+			showNotification('notification_fill_all_fields', 'error');
+			return;
+		}
+
+		const projectData = projects[projectName];
+		if (!projectData) {
+			showNotification('notification_invalid_project', 'error');
+			return;
+		}
+
+		// Format the date using Gantt's formatter
+		const formattedDate = gantt.date.date_to_str(gantt.config.date_format)(startDate);
+
+		const task = {
+			id: `task_${taskIdCounter++}`,
+			name: taskName,
+			start: formattedDate,
+			duration: duration,
+			progress: progress,
+			project: projectName,
+			parent: projectData.id,
+			memberIds: assignedMemberIds,
+			priority: undefined,
+			comments: ""
+		};
+
+		projectData.tasks.push(task);
+		document.getElementById('taskProject').value = '';
+		document.getElementById('taskName').value = '';
+		taskStartPicker.clear(); // Clear the date picker
+		document.getElementById('taskDuration').value = '';
+		document.getElementById('taskProgress').value = '0';
+		document.getElementById('taskMembers').querySelectorAll('input:checked').forEach(input => input.checked = false);
+		updateGantt();
+		showNotification('notification_task_added', 'success', {name: taskName});
+	}
+
+	function extractDateComponent(dateStr, format, component) {
+		// Extraire le jour, le mois ou l'année de la chaîne de date en fonction du format
+		const componentIndex = format.indexOf(component);
+		const componentLength = component === 'Y' ? 4 : 2;
+
+		if (componentIndex === -1) {
+			throw new Error(`Format does not contain ${component}`);
+		}
+
+		return parseInt(dateStr.substr(componentIndex, componentLength), 10);
+	}
+
+	function formatDate(dateObj, format) {
+		// Cette fonction formate un objet Date en une chaîne de date en utilisant le format fourni
+		const day = String(dateObj.getDate()).padStart(2, '0');
+		const month = String(dateObj.getMonth() + 1).padStart(2, '0'); // Les mois sont indexés à partir de 0
+		const year = dateObj.getFullYear();
+
+		return format
+			.replace('d', day)
+			.replace('m', month)
+			.replace('Y', year);
+	}
+
 
     function showTaskMembersLightbox(taskId) {
       const ganttTask = gantt.getTask(taskId);
