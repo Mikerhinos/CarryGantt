@@ -15,26 +15,35 @@
       height: 100vh;
       margin: 0;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      overflow: hidden; /* Prevent body scrollbars */
     }
     .sidebar {
       width: 380px;
-      min-width: 300px;
+      min-width: 380px;
       padding: 20px;
       background: rgba(255, 255, 255, 0.95);
       -webkit-backdrop-filter: blur(10px);
       backdrop-filter: blur(10px);
       box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
       overflow-y: auto;
-      border-radius: 0 20px 20px 0;
-      transition: width 0.3s ease;
+      overflow-x: hidden;
       display: flex;
       flex-direction: column;
+      transition: min-width 0.35s ease, width 0.35s ease, padding 0.35s ease, opacity 0.35s ease;
+    }
+    .sidebar.collapsed {
+        width: 0;
+        min-width: 0;
+        padding-left: 0;
+        padding-right: 0;
+        opacity: 0;
     }
     .main {
       flex-grow: 1;
       padding: 20px;
       display: flex;
       flex-direction: column;
+      transition: padding 0.35s ease;
     }
     .gantt-container {
       background: rgba(255, 255, 255, 0.95);
@@ -130,8 +139,6 @@
     .gantt_grid_data .gantt_cell[role=gridcell][data-column-name=members]:hover {
       background-color: #e9ecef;
     }
-
-    /* FIX: Rendre les poignées de redimensionnement des colonnes visibles */
     .gantt_grid_resizer {
         position: absolute;
         top: 0;
@@ -143,11 +150,9 @@
         background-color: transparent;
         transition: background-color 0.2s;
     }
-
     .gantt_grid_resizer:hover {
         background-color: rgba(0, 123, 255, 0.5);
     }
-
     .priority-low { background-color: #d4edda !important; }
     .priority-medium { background-color: #fff3cd !important; }
     .priority-high { background-color: #f8d7da !important; }
@@ -252,8 +257,10 @@
       <div class="gantt-controls">
         <h4 data-translate-key="gantt_chart_title">📊 Diagramme de Gantt</h4>
         <div>
+          <button id="toggleSidebarBtn" class="btn btn-outline-secondary me-2" onclick="toggleSidebar()">&laquo;</button>
           <button class="btn btn-outline-primary me-2" onclick="ganttZoomIn()">🔍+</button>
           <button class="btn btn-outline-primary me-2" onclick="ganttZoomOut()">🔍-</button>
+          <button id="toggleGridBtn" class="btn btn-outline-info me-2" onclick="toggleGanttGrid()" data-translate-key="hide_columns_btn">Masquer Colonnes</button>
           <button class="btn btn-outline-info me-2" onclick="manualRecalculate()" data-translate-key="recalculate_btn">🔄 Recalculer</button>
           <button class="btn btn-outline-success" onclick="exportGanttToPNG()" data-translate-key="export_png_btn">🖼️ PNG</button>
         </div>
@@ -386,7 +393,7 @@
     </div>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
@@ -406,6 +413,9 @@
     let currentEditingTaskId = null;
     let elementToFocusOnModalClose = null;
     let datePickers = [];
+    let isSidebarCollapsed = false;
+    let isGridVisible = true;
+
 
     // Translations
     const translations = {
@@ -432,6 +442,8 @@
         gantt_chart_title: "📊 Diagramme de Gantt",
         recalculate_btn: "🔄 Recalculer",
         export_png_btn: "🖼️ PNG",
+        hide_columns_btn: "Masquer Colonnes",
+        show_columns_btn: "Afficher Colonnes",
         edit_project_modal_title: "Modifier Projet",
         cancel_btn: "Annuler",
         save_btn: "Sauvegarder",
@@ -464,7 +476,8 @@
         notification_task_deleted: "🗑️ Tâche {name} supprimée.",
         notification_recalculated: "🔄 Planning recalculé selon les dépendances",
         notification_recalculation_error: "⚠️ Erreur lors du recalcul",
-        notification_png_exported: "🖼️ Diagramme exporté en PNG avec week-ends grisés.",
+        notification_png_exported: "🖼️ Diagramme exporté en PNG.",
+        notification_no_tasks_to_export: "Aucune tâche à exporter.",
         notification_invalid_date_format: "⚠️ Format de date invalide fourni.",
         notification_date_parse_error: "⚠️ Erreur lors de l'analyse de la date.",
         gantt_col_task: "Tâche",
@@ -515,6 +528,8 @@
         gantt_chart_title: "📊 Gantt Chart",
         recalculate_btn: "🔄 Recalculate",
         export_png_btn: "🖼️ PNG",
+        hide_columns_btn: "Hide Columns",
+        show_columns_btn: "Show Columns",
         edit_project_modal_title: "Edit Project",
         cancel_btn: "Cancel",
         save_btn: "Save",
@@ -547,7 +562,8 @@
         notification_task_deleted: "🗑️ Task {name} deleted.",
         notification_recalculated: "🔄 Schedule recalculated based on dependencies",
         notification_recalculation_error: "⚠️ Error during recalculation",
-        notification_png_exported: "🖼️ Chart exported to PNG with greyed weekends.",
+        notification_png_exported: "🖼️ Chart exported to PNG.",
+        notification_no_tasks_to_export: "No tasks to export.",
         notification_invalid_date_format: "⚠️ Invalid date format provided.",
         notification_date_parse_error: "⚠️ Error parsing date.",
         gantt_col_task: "Task",
@@ -598,6 +614,8 @@
         gantt_chart_title: "📊 Diagrama de Gantt",
         recalculate_btn: "🔄 Recalcular",
         export_png_btn: "🖼️ PNG",
+        hide_columns_btn: "Ocultar Columnas",
+        show_columns_btn: "Mostrar Columnas",
         edit_project_modal_title: "Editar Proyecto",
         cancel_btn: "Cancelar",
         save_btn: "Guardar",
@@ -605,6 +623,7 @@
         manage_task_members_modal_title_prefix: "Gestionar miembros de la tarea",
         notification_recalculated: "🔄 Horario recalculado según dependencias",
         notification_recalculation_error: "⚠️ Error durante el recálculo",
+        notification_no_tasks_to_export: "No hay tareas para exportar.",
         gantt_col_task: "Tarea",
         gantt_col_start_date: "Inicio",
         gantt_col_end_date: "Fin",
@@ -647,6 +666,8 @@
         gantt_chart_title: "📊 Gantt-Diagramm",
         recalculate_btn: "🔄 Neu berechnen",
         export_png_btn: "🖼️ PNG",
+        hide_columns_btn: "Spalten ausblenden",
+        show_columns_btn: "Spalten anzeigen",
         edit_project_modal_title: "Projekt bearbeiten",
         cancel_btn: "Abbrechen",
         save_btn: "Speichern",
@@ -654,6 +675,7 @@
         manage_task_members_modal_title_prefix: "Aufgabenmitglieder verwalten",
         notification_recalculated: "🔄 Zeitplan basierend auf Abhängigkeiten neu berechnet",
         notification_recalculation_error: "⚠️ Fehler bei der Neuberechnung",
+        notification_no_tasks_to_export: "Keine Aufgaben zum Exportieren.",
         gantt_col_task: "Aufgabe",
         gantt_col_start_date: "Start",
         gantt_col_end_date: "Ende",
@@ -693,9 +715,11 @@
         task_duration_placeholder: "Durata (giorni lavorativi)",
         assigned_members_label: "Membri assegnati:",
         add_task_btn: "Aggiungi Attività",
-        gantt_chart_title: "📊 Diagramma di Gantt",
+        gantt_chart_title: "📊 Diagramma de Gantt",
         recalculate_btn: "🔄 Ricalcola",
         export_png_btn: "🖼️ PNG",
+        hide_columns_btn: "Nascondi Colonne",
+        show_columns_btn: "Mostra Colonne",
         edit_project_modal_title: "Modifica Progetto",
         cancel_btn: "Annulla",
         save_btn: "Salva",
@@ -703,22 +727,23 @@
         manage_task_members_modal_title_prefix: "Gestisci membri attività",
         notification_recalculated: "🔄 Pianificazione ricalcolata in base alle dipendenze",
         notification_recalculation_error: "⚠️ Errore durante il ricalcolo",
+        notification_no_tasks_to_export: "Nessuna attività da esportare.",
         gantt_col_task: "Attività",
         gantt_col_start_date: "Inizio",
-        gantt_col_end_date: "Fine",
+        gantt_col_end_date: "Fin",
         gantt_col_duration: "Durata (g)",
         gantt_col_progress: "Avanzamento",
         gantt_col_members: "Membri",
         gantt_col_no_members: "Nessuno",
         custom_lightbox_title: "Dettagli Attività",
         custom_lightbox_task_name_label: "Nome attività",
-        custom_lightbox_task_priority_label: "Priorità",
+        custom_lightbox_task_priority_label: "Priorité",
         custom_lightbox_task_progress_label: "Avanzamento",
         custom_lightbox_task_start_label: "Data di inizio",
         custom_lightbox_task_end_label: "Data di fine",
         custom_lightbox_task_duration_label: "Durata (giorni)",
         custom_lightbox_task_comments_label: "Commenti",
-        task_comments_placeholder: "Aggiungi un commento...",
+        task_comments_placeholder: "Añadir un comentario...",
         task_priority_project: "Predefinito (Progetto)",
         task_start_placeholder: "Seleziona una data"
     }
@@ -779,6 +804,11 @@
             activeButton.classList.add('btn-primary', 'text-white');
         }
 
+        const toggleGridBtn = document.getElementById('toggleGridBtn');
+        const gridBtnKey = isGridVisible ? 'hide_columns_btn' : 'show_columns_btn';
+        toggleGridBtn.textContent = translate(gridBtnKey);
+
+
         if (gantt && gantt.config) {
             if (gantt.locale.labels) {
                 gantt.locale.labels.label_save = translate('save_btn');
@@ -799,6 +829,43 @@
         currentLang = lang;
         setupDatePickers();
         applyTranslations();
+    }
+
+    function toggleSidebar() {
+        console.log("toggleSidebar called. isSidebarCollapsed:", isSidebarCollapsed);
+        const sidebar = document.querySelector('.sidebar');
+        const btn = document.getElementById('toggleSidebarBtn');
+        const transitionDuration = 350; // Matches CSS transition duration
+
+        if (!isSidebarCollapsed) { // Currently visible, need to collapse
+            sidebar.classList.add('collapsed');
+            btn.innerHTML = '&raquo;';
+            setTimeout(() => {
+                sidebar.style.display = 'none'; // Fully hide after transition
+                if(gantt) gantt.render(); // Re-render Gantt chart after sidebar is completely hidden
+            }, transitionDuration);
+        } else { // Currently collapsed, need to expand
+            sidebar.style.display = 'flex'; // Make visible immediately
+            requestAnimationFrame(() => { // Use requestAnimationFrame for smoother visual updates
+                sidebar.classList.remove('collapsed');
+                btn.innerHTML = '&laquo;';
+                setTimeout(() => {
+                    if(gantt) gantt.render(); // Re-render Gantt chart after sidebar is completely visible
+                }, transitionDuration);
+            });
+        }
+        isSidebarCollapsed = !isSidebarCollapsed;
+    }
+
+    function toggleGanttGrid() {
+        isGridVisible = !isGridVisible;
+        gantt.config.show_grid = isGridVisible;
+        gantt.render();
+
+        const btn = document.getElementById('toggleGridBtn');
+        const key = isGridVisible ? 'hide_columns_btn' : 'show_columns_btn';
+        btn.setAttribute('data-translate-key', key);
+        btn.textContent = translate(key);
     }
 
     function adjustColor(color, percent) {
@@ -866,7 +933,7 @@
             "#taskStart", "#customLightboxTaskStart", "#customLightboxTaskEnd",
             "#projectDeadline", "#editProjectDeadline"
         ];
-        
+
         pickerConfigs.forEach(selector => {
             const element = document.querySelector(selector);
             if (element) {
@@ -1041,7 +1108,6 @@
       if (project) {
           document.getElementById('editProjectName').value = project.name;
           document.getElementById('editProjectDescription').value = project.description;
-          // Use flatpickr's setDate method to ensure format consistency
           const deadlinePicker = datePickers.find(p => p.element.id === 'editProjectDeadline');
           if(deadlinePicker) deadlinePicker.setDate(project.deadline, false);
 
@@ -1063,7 +1129,6 @@
 
       const oldProject = projects[projectNameToEdit] || { tasks: [], id: `project_${newName.replace(/\s+/g, '_')}_${Date.now()}`, visible: true };
 
-      // Get date from picker instance
       const deadlinePicker = datePickers.find(p => p.element.id === 'editProjectDeadline');
       const deadline = deadlinePicker.selectedDates.length > 0 ? gantt.date.date_to_str(gantt.config.date_format)(deadlinePicker.selectedDates[0]) : "";
 
@@ -1108,7 +1173,6 @@
         const progress = parseFloat(document.getElementById('taskProgress').value);
         const assignedMemberIds = Array.from(document.getElementById('taskMembers').querySelectorAll('input:checked')).map(input => parseInt(input.value));
 
-        // CORRECT : Get the Date object directly from the Flatpickr instance
         const taskStartPicker = datePickers.find(picker => picker.element.id === 'taskStart');
         if (!taskStartPicker || taskStartPicker.selectedDates.length === 0 || !projectName || !taskName || isNaN(duration) || duration <= 0) {
             showNotification('notification_fill_all_fields', 'error');
@@ -1122,14 +1186,12 @@
             return;
         }
 
-        // Format the date ONLY for storing it as a string. Gantt will use the object.
         const formattedDate = gantt.date.date_to_str(gantt.config.date_format)(startDateObject);
 
         const task = {
             id: `task_${taskIdCounter++}`,
             name: taskName,
-            start: formattedDate, // Stored as string
-            start_date_obj: startDateObject, // Keep the object for gantt
+            start: formattedDate,
             duration: duration,
             progress: progress,
             project: projectName,
@@ -1141,7 +1203,6 @@
 
         projectData.tasks.push(task);
 
-        // Clear form
         document.getElementById('taskProject').value = '';
         document.getElementById('taskName').value = '';
         taskStartPicker.clear();
@@ -1247,7 +1308,6 @@
         document.getElementById('customLightboxTaskId').value = id;
         document.getElementById('customLightboxTaskName').value = task.text.replace(/^[🔴🟡🟢]\s*/, '');
 
-        // Use flatpickr's API to set the date
         const startPicker = datePickers.find(p => p.element.id === 'customLightboxTaskStart');
         const endPicker = datePickers.find(p => p.element.id === 'customLightboxTaskEnd');
         if (startPicker) startPicker.setDate(task.start_date, false);
@@ -1300,7 +1360,6 @@
         const duration = parseInt(document.getElementById('customLightboxTaskDuration').value);
         const progress = parseFloat(document.getElementById('customLightboxTaskProgress').value);
 
-        // CORRECT: Get Date object from picker instance
         const startPicker = datePickers.find(p => p.element.id === 'customLightboxTaskStart');
         if (!taskName || !startPicker || startPicker.selectedDates.length === 0 || isNaN(duration) || duration < 0) {
             showNotification('notification_fill_all_fields', 'error');
@@ -1425,10 +1484,11 @@
       gantt.config.auto_scheduling = true;
       gantt.config.auto_scheduling_strict = true;
       gantt.config.auto_scheduling_initial = true;
-      gantt.config.date_format = "%Y-%m-%d"; // Internal format for dhtmlxGantt
+      gantt.config.date_format = "%Y-%m-%d";
       gantt.config.grid_resize = true;
       gantt.config.drag_progress = true;
       gantt.config.tooltip_timeout = 30;
+      gantt.config.show_grid = isGridVisible; // Initialize with the variable
       gantt.setWorkTime({ day: 0, hours: false });
       gantt.setWorkTime({ day: 6, hours: false });
 
@@ -1721,7 +1781,6 @@
             });
 
             filteredTasksForDisplay.forEach(task => {
-              // IMPORTANT: Use the stored string 'start' for parsing.
               tasksToParse.push({
                 id: task.id, text: task.name, start_date: task.start,
                 duration: task.duration, progress: task.progress, parent: project.id,
@@ -1785,6 +1844,27 @@
     function exportGanttToPNG() {
         if (!gantt) return;
 
+        let minDate = null;
+        let maxDate = null;
+
+        gantt.eachTask(function(task) {
+            if (task.type === gantt.config.types.project) return;
+            if (!minDate || task.start_date < minDate) {
+                minDate = new Date(task.start_date);
+            }
+            if (!maxDate || task.end_date > maxDate) {
+                maxDate = new Date(task.end_date);
+            }
+        });
+
+        if (!minDate || !maxDate) {
+            showNotification("notification_no_tasks_to_export", 'error');
+            return;
+        }
+
+        const startDate = gantt.date.add(minDate, -1, "day");
+        const endDate = gantt.date.add(maxDate, 1, "day");
+
         const styles = `
             <style>
                 .gantt_task_cell.weekend {
@@ -1814,7 +1894,9 @@
         gantt.exportToPNG({
             name: "gantt_diagram.png",
             raw: true,
-            header: styles
+            header: styles,
+            start_date: startDate,
+            end_date: endDate
         });
         showNotification("notification_png_exported");
     }
@@ -1903,6 +1985,7 @@
       renderProjects();
       updateTaskMembers();
       updateGantt();
+      // Removed: document.getElementById('toggleSidebarBtn').addEventListener('click', toggleSidebar);
 
       const modalElement = document.getElementById('customTaskModal');
       if (modalElement) {
