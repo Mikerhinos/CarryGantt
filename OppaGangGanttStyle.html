@@ -386,8 +386,12 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
+  <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
+  <script src="https://npmcdn.com/flatpickr/dist/l10n/de.js"></script>
+  <script src="https://npmcdn.com/flatpickr/dist/l10n/it.js"></script>
   <script>
     // Global Variables
     let members = [];
@@ -793,8 +797,8 @@
 
     function setLanguage(lang) {
         currentLang = lang;
-        applyTranslations();
         setupDatePickers();
+        applyTranslations();
     }
 
     function adjustColor(color, percent) {
@@ -841,119 +845,43 @@
       setTimeout(() => div.remove(), 4000);
     }
 
+    function getDateFormatForLocale(lang) {
+        switch (lang) {
+            case 'fr': case 'es': case 'it': return "d/m/Y";
+            case 'de': return "d.m.Y";
+            default: return "Y-m-d";
+        }
+    }
+
     function setupDatePickers() {
         if (datePickers.length > 0) {
             datePickers.forEach(picker => picker.destroy());
             datePickers = [];
         }
 
-        let locale;
-        switch (currentLang) {
-            case 'fr':
-                locale = "fr";
-                break;
-            case 'es':
-                locale = "es";
-                break;
-            case 'de':
-                locale = "de";
-                break;
-            case 'it':
-                locale = "it";
-                break;
-            default:
-                locale = null;
-        }
-		
-		if (locale) {
-			let localeScript = document.createElement('script');
-			localeScript.src = `https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/${locale}.js`;
-			localeScript.onload = function() {
-				initializeDatePickers(locale);
-			};
-			localeScript.onerror = function() {
-				console.error(`Failed to load Flatpickr locale script for ${locale}`);
-				initializeDatePickers('en'); // Utiliser l'anglais par défaut en cas d'échec
-			};
-			document.head.appendChild(localeScript);
-		} else {
-			// Initialiser directement avec l'anglais
-			initializeDatePickers('en');
-		  }
-		}
-		
-		function initializeDatePickers(locale) {
-			datePickers = [
-				flatpickr("#taskStart", {
-					locale: locale,
-					dateFormat: getDateFormatForLocale(locale),
-					onChange: function(selectedDates, dateStr, instance) {
-					}
-				}),
-				flatpickr("#customLightboxTaskStart", {
-					locale: locale,
-					dateFormat: getDateFormatForLocale(locale),
-					onChange: updateLightboxEndDate
-				}),
-				flatpickr("#customLightboxTaskEnd", {
-					locale: locale,
-					dateFormat: getDateFormatForLocale(locale),
-					onChange: updateLightboxDuration
-				}),
-				flatpickr("#projectDeadline", {
-					locale: locale,
-					dateFormat: getDateFormatForLocale(locale)
-				}),
-				flatpickr("#editProjectDeadline", {
-					locale: locale,
-					dateFormat: getDateFormatForLocale(locale)
-				})
-			];
+        const locale = (currentLang === 'en') ? 'default' : currentLang;
+        const dateFormat = getDateFormatForLocale(currentLang);
 
-		let localeScript = document.createElement('script');
-		localeScript.src = `https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/${locale}.js`;
-		localeScript.onload = function() {
-			datePickers = [
-				flatpickr("#taskStart", {
-					locale: locale,
-					dateFormat: getDateFormatForLocale(locale),
-					onChange: function(selectedDates, dateStr, instance) {
-					}
-				}),
-				flatpickr("#customLightboxTaskStart", {
-					locale: locale,
-					dateFormat: getDateFormatForLocale(locale),
-					onChange: updateLightboxEndDate
-				}),
-				flatpickr("#customLightboxTaskEnd", {
-					locale: locale,
-					dateFormat: getDateFormatForLocale(locale),
-					onChange: updateLightboxDuration
-				}),
-				flatpickr("#projectDeadline", {
-					locale: locale,
-					dateFormat: getDateFormatForLocale(locale)
-				}),
-				flatpickr("#editProjectDeadline", {
-					locale: locale,
-					dateFormat: getDateFormatForLocale(locale)
-				})
-			];
-		};
-		document.head.appendChild(localeScript);
-	}
-
-    function getDateFormatForLocale(locale) {
-        switch (locale) {
-            case 'fr','es','it':
-				return "d/m/Y";
-            case 'de':
-                return "d.m.Y";
-			case 'en':
-				return "Y-m-d";
-            default:
-                return "d/m/Y";
-        }
+        const pickerConfigs = [
+            "#taskStart", "#customLightboxTaskStart", "#customLightboxTaskEnd",
+            "#projectDeadline", "#editProjectDeadline"
+        ];
+        
+        pickerConfigs.forEach(selector => {
+            const element = document.querySelector(selector);
+            if (element) {
+                const config = {
+                    dateFormat: dateFormat,
+                    locale: locale,
+                };
+                if (selector === "#customLightboxTaskStart") {
+                    config.onChange = updateLightboxEndDate;
+                } else if (selector === "#customLightboxTaskEnd") {
+                    config.onChange = updateLightboxDuration;
+                }
+                datePickers.push(flatpickr(element, config));
+            }
+        });
     }
 
     function addOrUpdateMember() {
@@ -1113,7 +1041,10 @@
       if (project) {
           document.getElementById('editProjectName').value = project.name;
           document.getElementById('editProjectDescription').value = project.description;
-          document.getElementById('editProjectDeadline').value = project.deadline;
+          // Use flatpickr's setDate method to ensure format consistency
+          const deadlinePicker = datePickers.find(p => p.element.id === 'editProjectDeadline');
+          if(deadlinePicker) deadlinePicker.setDate(project.deadline, false);
+
           document.getElementById('editProjectPriority').value = project.priority;
           document.getElementById('editProjectColor').value = project.color;
           new bootstrap.Modal(document.getElementById('editProjectModal')).show();
@@ -1132,9 +1063,14 @@
 
       const oldProject = projects[projectNameToEdit] || { tasks: [], id: `project_${newName.replace(/\s+/g, '_')}_${Date.now()}`, visible: true };
 
+      // Get date from picker instance
+      const deadlinePicker = datePickers.find(p => p.element.id === 'editProjectDeadline');
+      const deadline = deadlinePicker.selectedDates.length > 0 ? gantt.date.date_to_str(gantt.config.date_format)(deadlinePicker.selectedDates[0]) : "";
+
       const updatedProjectData = {
         ...oldProject, name: newName,
-        description: document.getElementById('editProjectDescription').value, deadline: document.getElementById('editProjectDeadline').value,
+        description: document.getElementById('editProjectDescription').value,
+        deadline: deadline,
         priority: document.getElementById('editProjectPriority').value, color: document.getElementById('editProjectColor').value,
       };
 
@@ -1165,105 +1101,59 @@
       showNotification('notification_project_removed', 'success', {name});
     }
 
-	function parseDate(dateStr, format) {
-		// Déterminer les positions des composants de la date dans le format
-		const dayIndex = format.indexOf('d');
-		const monthIndex = format.indexOf('m');
-		const yearIndex = format.indexOf('Y');
+    function addTask() {
+        const projectName = document.getElementById('taskProject').value;
+        const taskName = document.getElementById('taskName').value.trim();
+        const duration = parseInt(document.getElementById('taskDuration').value);
+        const progress = parseFloat(document.getElementById('taskProgress').value);
+        const assignedMemberIds = Array.from(document.getElementById('taskMembers').querySelectorAll('input:checked')).map(input => parseInt(input.value));
 
-		// Extraire les composants de la date en fonction du format
-		const day = parseInt(dateStr.substring(dayIndex, dayIndex + 2), 10);
-		const month = parseInt(dateStr.substring(monthIndex, monthIndex + 2), 10) - 1; // Les mois sont indexés à partir de 0 en JavaScript
-		const year = parseInt(dateStr.substring(yearIndex, yearIndex + 4), 10);
+        // CORRECT : Get the Date object directly from the Flatpickr instance
+        const taskStartPicker = datePickers.find(picker => picker.element.id === 'taskStart');
+        if (!taskStartPicker || taskStartPicker.selectedDates.length === 0 || !projectName || !taskName || isNaN(duration) || duration <= 0) {
+            showNotification('notification_fill_all_fields', 'error');
+            return;
+        }
+        const startDateObject = taskStartPicker.selectedDates[0];
 
-		// Créer un objet Date
-		const date = new Date(year, month, day);
+        const projectData = projects[projectName];
+        if (!projectData) {
+            showNotification('notification_invalid_project', 'error');
+            return;
+        }
 
-		// Vérifier si la date est valide
-		if (isNaN(date.getTime())) {
-			throw new Error("Invalid date");
-		}
+        // Format the date ONLY for storing it as a string. Gantt will use the object.
+        const formattedDate = gantt.date.date_to_str(gantt.config.date_format)(startDateObject);
 
-		return date;
-	}
+        const task = {
+            id: `task_${taskIdCounter++}`,
+            name: taskName,
+            start: formattedDate, // Stored as string
+            start_date_obj: startDateObject, // Keep the object for gantt
+            duration: duration,
+            progress: progress,
+            project: projectName,
+            parent: projectData.id,
+            memberIds: assignedMemberIds,
+            priority: undefined,
+            comments: ""
+        };
 
-	function addTask() {
-		const projectName = document.getElementById('taskProject').value;
-		const taskName = document.getElementById('taskName').value.trim();
-		const duration = parseInt(document.getElementById('taskDuration').value);
-		const progress = parseFloat(document.getElementById('taskProgress').value);
-		const assignedMemberIds = Array.from(document.getElementById('taskMembers').querySelectorAll('input:checked')).map(input => parseInt(input.value));
+        projectData.tasks.push(task);
 
-		// Get the Flatpickr instance for taskStart
-		const taskStartPicker = datePickers.find(picker => picker.element.id === 'taskStart');
-		if (!taskStartPicker || taskStartPicker.selectedDates.length === 0) {
-			showNotification('notification_fill_all_fields', 'error');
-			return;
-		}
-		const startDate = taskStartPicker.selectedDates[0];
+        // Clear form
+        document.getElementById('taskProject').value = '';
+        document.getElementById('taskName').value = '';
+        taskStartPicker.clear();
+        document.getElementById('taskDuration').value = '';
+        document.getElementById('taskProgress').value = '0';
+        document.getElementById('taskMembers').querySelectorAll('input:checked').forEach(input => input.checked = false);
 
-		// Validate other inputs
-		if (!projectName || !taskName || isNaN(duration) || duration <= 0) {
-			showNotification('notification_fill_all_fields', 'error');
-			return;
-		}
-
-		const projectData = projects[projectName];
-		if (!projectData) {
-			showNotification('notification_invalid_project', 'error');
-			return;
-		}
-
-		// Format the date using Gantt's formatter
-		const formattedDate = gantt.date.date_to_str(gantt.config.date_format)(startDate);
-
-		const task = {
-			id: `task_${taskIdCounter++}`,
-			name: taskName,
-			start: formattedDate,
-			duration: duration,
-			progress: progress,
-			project: projectName,
-			parent: projectData.id,
-			memberIds: assignedMemberIds,
-			priority: undefined,
-			comments: ""
-		};
-
-		projectData.tasks.push(task);
-		document.getElementById('taskProject').value = '';
-		document.getElementById('taskName').value = '';
-		taskStartPicker.clear(); // Clear the date picker
-		document.getElementById('taskDuration').value = '';
-		document.getElementById('taskProgress').value = '0';
-		document.getElementById('taskMembers').querySelectorAll('input:checked').forEach(input => input.checked = false);
-		updateGantt();
-		showNotification('notification_task_added', 'success', {name: taskName});
-	}
-
-	function extractDateComponent(dateStr, format, component) {
-		// Extraire le jour, le mois ou l'année de la chaîne de date en fonction du format
-		const componentIndex = format.indexOf(component);
-		const componentLength = component === 'Y' ? 4 : 2;
-
-		if (componentIndex === -1) {
-			throw new Error(`Format does not contain ${component}`);
-		}
-
-		return parseInt(dateStr.substr(componentIndex, componentLength), 10);
-	}
-
-	function formatDate(dateObj, format) {
-		// Cette fonction formate un objet Date en une chaîne de date en utilisant le format fourni
-		const day = String(dateObj.getDate()).padStart(2, '0');
-		const month = String(dateObj.getMonth() + 1).padStart(2, '0'); // Les mois sont indexés à partir de 0
-		const year = dateObj.getFullYear();
-
-		return format
-			.replace('d', day)
-			.replace('m', month)
-			.replace('Y', year);
-	}
+        updateGantt();
+        showNotification('notification_task_added', 'success', {
+            name: taskName
+        });
+    }
 
 
     function showTaskMembersLightbox(taskId) {
@@ -1352,21 +1242,19 @@
         elementToFocusOnModalClose = document.activeElement;
         currentEditingTaskId = id;
         const task = gantt.getTask(id);
-        if (!task) {
-            console.error("Task not found in Gantt for ID:", id);
-            return;
-        }
+        if (!task) return;
 
         document.getElementById('customLightboxTaskId').value = id;
         document.getElementById('customLightboxTaskName').value = task.text.replace(/^[🔴🟡🟢]\s*/, '');
 
-        const initialStartDateStr = gantt.date.date_to_str("%Y-%m-%d")(task.start_date);
-        document.getElementById('customLightboxTaskStart').value = initialStartDateStr;
+        // Use flatpickr's API to set the date
+        const startPicker = datePickers.find(p => p.element.id === 'customLightboxTaskStart');
+        const endPicker = datePickers.find(p => p.element.id === 'customLightboxTaskEnd');
+        if (startPicker) startPicker.setDate(task.start_date, false);
+        if (endPicker) endPicker.setDate(task.end_date, false);
 
         document.getElementById('customLightboxTaskDuration').value = task.duration;
         document.getElementById('customLightboxTaskProgress').value = task.progress;
-
-        updateLightboxEndDate();
 
         let taskDataStore = null;
         if (task.parent) {
@@ -1378,7 +1266,6 @@
 
         const priorityToSet = taskDataStore && typeof taskDataStore.priority !== 'undefined' ? taskDataStore.priority : 'project';
         document.getElementById('customLightboxTaskPriority').value = priorityToSet;
-
         document.getElementById('customLightboxTaskComments').value = taskDataStore ? (taskDataStore.comments || "") : "";
 
         const membersContainer = document.getElementById('customLightboxTaskMembers');
@@ -1400,12 +1287,8 @@
     }
 
     function closeCustomLightbox() {
-        if (customTaskModalInstance) {
-            customTaskModalInstance.hide();
-        }
-        if (elementToFocusOnModalClose) {
-            elementToFocusOnModalClose.focus();
-        }
+        if (customTaskModalInstance) customTaskModalInstance.hide();
+        if (elementToFocusOnModalClose) elementToFocusOnModalClose.focus();
         currentEditingTaskId = null;
         elementToFocusOnModalClose = null;
     }
@@ -1414,57 +1297,44 @@
         if (!currentEditingTaskId) return;
 
         const taskName = document.getElementById('customLightboxTaskName').value.trim();
-        const startDateStr = document.getElementById('customLightboxTaskStart').value;
         const duration = parseInt(document.getElementById('customLightboxTaskDuration').value);
         const progress = parseFloat(document.getElementById('customLightboxTaskProgress').value);
-        const taskPriority = document.getElementById('customLightboxTaskPriority').value;
-        const assignedMemberIds = Array.from(document.getElementById('customLightboxTaskMembers').querySelectorAll('input:checked')).map(input => parseInt(input.value));
-        const comments = document.getElementById('customLightboxTaskComments').value;
 
-        if (!taskName || !startDateStr || startDateStr.trim() === "" || isNaN(duration) || duration < 0) {
+        // CORRECT: Get Date object from picker instance
+        const startPicker = datePickers.find(p => p.element.id === 'customLightboxTaskStart');
+        if (!taskName || !startPicker || startPicker.selectedDates.length === 0 || isNaN(duration) || duration < 0) {
             showNotification('notification_fill_all_fields', 'error');
             return;
         }
-
-        const ganttTask = gantt.getTask(currentEditingTaskId);
-        if (!ganttTask) {
-            console.error("Gantt task not found for ID:", currentEditingTaskId);
-            closeCustomLightbox();
-            return;
-        }
+        const newStartDate = startPicker.selectedDates[0];
 
         gantt.batchUpdate(() => {
-            const parseDate = gantt.date.str_to_date("%Y-%m-%d");
-            const newStartDate = parseDate(startDateStr);
-            if (!newStartDate || isNaN(newStartDate.getTime())) {
-                showNotification('notification_invalid_date_format', 'error');
-                return;
-            }
-            ganttTask.start_date = newStartDate;
+            const ganttTask = gantt.getTask(currentEditingTaskId);
+            if (!ganttTask) return;
+
             ganttTask.text = taskName;
+            ganttTask.start_date = newStartDate;
             ganttTask.duration = duration;
             ganttTask.progress = progress;
             ganttTask.end_date = gantt.calculateEndDate(ganttTask);
-
             gantt.updateTask(currentEditingTaskId);
+
+            let parentProjectDataStore = Object.values(projects).find(p => String(p.id) === String(ganttTask.parent));
+            if (parentProjectDataStore) {
+                let taskDataInStore = parentProjectDataStore.tasks.find(t => String(t.id) === String(currentEditingTaskId));
+                if (taskDataInStore) {
+                    taskDataInStore.name = taskName;
+                    taskDataInStore.start = gantt.date.date_to_str(gantt.config.date_format)(newStartDate);
+                    taskDataInStore.duration = duration;
+                    taskDataInStore.progress = progress;
+                    taskDataInStore.priority = document.getElementById('customLightboxTaskPriority').value === "project" ? undefined : document.getElementById('customLightboxTaskPriority').value;
+                    taskDataInStore.memberIds = Array.from(document.getElementById('customLightboxTaskMembers').querySelectorAll('input:checked')).map(input => parseInt(input.value));
+                    taskDataInStore.comments = document.getElementById('customLightboxTaskComments').value;
+                }
+            }
         });
 
         gantt.refreshTask(currentEditingTaskId);
-
-        let parentProjectDataStore = Object.values(projects).find(p => String(p.id) === String(ganttTask.parent));
-        if (parentProjectDataStore) {
-            let taskDataInStore = parentProjectDataStore.tasks.find(t => String(t.id) === String(currentEditingTaskId));
-            if (taskDataInStore) {
-                taskDataInStore.name = taskName;
-                taskDataInStore.start = gantt.date.date_to_str(gantt.config.date_format)(ganttTask.start_date);
-                taskDataInStore.duration = ganttTask.duration;
-                taskDataInStore.progress = progress;
-                taskDataInStore.priority = taskPriority === "project" ? undefined : taskPriority;
-                taskDataInStore.memberIds = assignedMemberIds;
-                taskDataInStore.comments = comments;
-            }
-        }
-
         showNotification('notification_task_updated', 'success', {name: taskName});
         closeCustomLightbox();
     }
@@ -1476,34 +1346,30 @@
     }
 
     function updateLightboxEndDate() {
-        const startDateStr = document.getElementById('customLightboxTaskStart').value;
+        const startPicker = datePickers.find(p => p.element.id === 'customLightboxTaskStart');
+        const endPicker = datePickers.find(p => p.element.id === 'customLightboxTaskEnd');
         const duration = parseInt(document.getElementById('customLightboxTaskDuration').value, 10);
 
-        if (startDateStr && !isNaN(duration) && duration >= 0) {
-            const startDate = gantt.date.str_to_date(gantt.config.date_format)(startDateStr);
-            if (startDate && !isNaN(startDate.getTime())) {
-                const endDate = gantt.calculateEndDate({start_date: startDate, duration: duration});
-                document.getElementById('customLightboxTaskEnd').value = gantt.date.date_to_str("%Y-%m-%d")(endDate);
-            }
+        if (startPicker && startPicker.selectedDates.length > 0 && !isNaN(duration) && duration >= 0) {
+            const startDate = startPicker.selectedDates[0];
+            const endDate = gantt.calculateEndDate({start_date: startDate, duration: duration});
+            if (endPicker) endPicker.setDate(endDate, false);
         }
     }
 
     function updateLightboxDuration() {
-        const startDateStr = document.getElementById('customLightboxTaskStart').value;
-        const endDateStr = document.getElementById('customLightboxTaskEnd').value;
+        const startPicker = datePickers.find(p => p.element.id === 'customLightboxTaskStart');
+        const endPicker = datePickers.find(p => p.element.id === 'customLightboxTaskEnd');
 
-        if (startDateStr && endDateStr) {
-            const startDate = gantt.date.str_to_date(gantt.config.date_format)(startDateStr);
-            let endDate = gantt.date.str_to_date(gantt.config.date_format)(endDateStr);
-
-            if (startDate && endDate && !isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
-                if (endDate < startDate) {
-                    endDate = new Date(startDate);
-                    document.getElementById('customLightboxTaskEnd').value = gantt.date.date_to_str("%Y-%m-%d")(endDate);
-                }
-                const duration = gantt.calculateDuration({start_date: startDate, end_date: endDate});
-                document.getElementById('customLightboxTaskDuration').value = duration;
+        if (startPicker && startPicker.selectedDates.length > 0 && endPicker && endPicker.selectedDates.length > 0) {
+            const startDate = startPicker.selectedDates[0];
+            let endDate = endPicker.selectedDates[0];
+            if (endDate < startDate) {
+                endDate = new Date(startDate);
+                endPicker.setDate(endDate, false);
             }
+            const duration = gantt.calculateDuration({start_date: startDate, end_date: endDate});
+            document.getElementById('customLightboxTaskDuration').value = duration;
         }
     }
 
@@ -1559,7 +1425,7 @@
       gantt.config.auto_scheduling = true;
       gantt.config.auto_scheduling_strict = true;
       gantt.config.auto_scheduling_initial = true;
-      gantt.config.date_format = "%Y-%m-%d";
+      gantt.config.date_format = "%Y-%m-%d"; // Internal format for dhtmlxGantt
       gantt.config.grid_resize = true;
       gantt.config.drag_progress = true;
       gantt.config.tooltip_timeout = 30;
@@ -1569,20 +1435,9 @@
       gantt.templates.date_grid = function(date){
           let format;
           switch(currentLang) {
-              case 'fr':
-                  format = "%d/%m/%Y";
-                  break;
-              case 'es':
-                  format = "%d/%m/%Y";
-                  break;
-              case 'it':
-                  format = "%d/%m/%Y";
-                  break;
-              case 'de':
-                  format = "%d.%m.%Y";
-                  break;
-              default:
-                  format = "%Y-%m-%d";
+              case 'fr': case 'es': case 'it': format = "%d/%m/%Y"; break;
+              case 'de': format = "%d.%m.%Y"; break;
+              default: format = "%Y-%m-%d";
           }
           return gantt.date.date_to_str(format)(date);
       };
@@ -1866,6 +1721,7 @@
             });
 
             filteredTasksForDisplay.forEach(task => {
+              // IMPORTANT: Use the stored string 'start' for parsing.
               tasksToParse.push({
                 id: task.id, text: task.name, start_date: task.start,
                 duration: task.duration, progress: task.progress, parent: project.id,
