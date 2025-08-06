@@ -516,19 +516,7 @@
   <script src="https://npmcdn.com/flatpickr/dist/l10n/de.js"></script>
   <script src="https://npmcdn.com/flatpickr/dist/l10n/it.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        gantt.config.date_format = "%Y-%m-%d";
-        gantt.config.xml_date = "%Y-%m-%d";
-        initGantt();
-        document.getElementById('customLightboxTaskDuration').addEventListener('input', function() {
-            updateLightboxSchedule('duration');
-        });
-        initDummyData();
-        saveStateToHistory();
-        setLanguage(currentLang);
-        updateGantt();
-    });
-
+    // Global variables
     let members = [];
     let projects = {};
     let allLinks = [];
@@ -539,10 +527,9 @@
     let datePickers = [];
     let isSidebarCollapsed = false;
     let isGridVisible = true;
-    let isUpdatingGanttProgrammatically = false;
+    let isUpdatingGanttProgrammatically = false; // Flag to prevent re-entry into event handlers
     let memberWorkload = {}; // Pour stocker la charge de travail par membre et par jour
     let highlightedInfo = { taskIds: [], level: '' };
-    let projectNameToEdit = null;
 
     const historyStack = [];
     const MAX_HISTORY_SIZE = 10;
@@ -576,41 +563,12 @@
     ];
     let currentZoomLevelIndex = 2;
 
-    function applyZoom(levelIndex) {
-        if (levelIndex >= 0 && levelIndex < zoomLevels.length) {
-            currentZoomLevelIndex = levelIndex;
-            const newZoom = zoomLevels[currentZoomLevelIndex];
-            gantt.config.scale_unit = newZoom.scale_unit;
-            if (newZoom.template) {
-                gantt.config.date_scale = null;
-                gantt.templates.date_scale = newZoom.template;
-            } else {
-                gantt.config.date_scale = newZoom.date_scale;
-                gantt.templates.date_scale = null; // Reset to default
-            }
-            gantt.config.subscales = newZoom.subscales;
-            gantt.config.min_column_width = newZoom.min_column_width;
-            gantt.render();
-        }
-    }
-
-    function ganttZoomIn() {
-        if (currentZoomLevelIndex > 0) {
-            applyZoom(currentZoomLevelIndex - 1);
-        }
-    }
-
-    function ganttZoomOut() {
-        if (currentZoomLevelIndex < zoomLevels.length - 1) {
-            applyZoom(currentZoomLevelIndex + 1);
-        }
-    }
-
     const translations = {
     fr: {
         export: "💾 Exporter", import: "📂 Importer", clear_all_data_btn: "🗑️ Vider tout",
         clear_all_data_confirm: "Êtes-vous sûr de vouloir vider TOUTES les données (membres, projets, tâches, liens) ? Cette action est irréversible.",
         clear_all_data_confirm_project: "Êtes-vous sûr de vouloir supprimer le projet '{name}' et toutes ses tâches ? Cette action est irréversible.",
+        clear_all_data_confirm_task: "Êtes-vous sûr de vouloir supprimer la tâche '{name}' ? Cette action est irréversible.",
         notification_all_data_cleared: "✅ Toutes les données ont été effacées.", members_section_title: "👥 Membres",
         member_name_placeholder: "Nom du membre", add_member_btn: "Ajouter Membre", edit_member_btn: "Modifier Membre",
         projects_section_title: "📁 Projets", project_name_placeholder: "Nom du projet", project_description_placeholder: "Description",
@@ -657,6 +615,7 @@
         export: "💾 Export", import: "📂 Import", clear_all_data_btn: "🗑️ Clear All",
         clear_all_data_confirm: "Are you sure you want to clear ALL data (members, projects, tasks, links)? This action is irreversible.",
         clear_all_data_confirm_project: "Are you sure you want to delete project '{name}' and all its tasks? This action is irreversible.",
+        clear_all_data_confirm_task: "Are you sure you want to delete task '{name}'? This action is irreversible.",
         notification_all_data_cleared: "✅ All data has been cleared.", members_section_title: "👥 Members",
         member_name_placeholder: "Member name", add_member_btn: "Add Member", edit_member_btn: "Edit Member",
         projects_section_title: "📁 Projects", project_name_placeholder: "Project name", project_description_placeholder: "Description",
@@ -678,8 +637,8 @@
         notification_project_name_required: "⚠️ Project name required.", notification_project_exists: "⚠️ This project name already exists.",
         notification_project_created: "🎉 Project {name} created with default tasks.", notification_project_edited: "✅ Project {name} updated.",
         notification_project_removed: "❌ Project {name} removed.", notification_fill_all_fields: "⚠️ Fill all fields (name, start, duration > 0).",
-        notification_invalid_project: "⚠️ Invalid project selected.", notification_task_added: "✅ Task {name} added.",
-        notification_task_members_updated: "✅ Task {name} members updated.", notification_task_updated: "✅ Task {name} updated.",
+        notification_invalid_project: "⚠️ Invalid project selected.", notification_task_added: "✅ Tâche {name} ajoutée.",
+        notification_task_members_updated: "✅ Task {name} members updated.", notification_task_updated: "✅ Tâche {name} mise à jour.",
         notification_project_and_tasks_updated: "✅ Projet {name} et ses tâches mises à jour.", notification_link_added: "🔗 Link added.",
         notification_link_removed: "❌ Link removed.", notification_task_deleted: "🗑️ Task {name} deleted.",
         notification_recalculated: "🔄 Schedule recalculated based on dependencies", notification_recalculation_error: "⚠️ Error during recalculation",
@@ -702,12 +661,149 @@
     // ... other languages
     };
 
+    function applyZoom(levelIndex) {
+        if (levelIndex >= 0 && levelIndex < zoomLevels.length) {
+            currentZoomLevelIndex = levelIndex;
+            const newZoom = zoomLevels[currentZoomLevelIndex];
+            gantt.config.scale_unit = newZoom.scale_unit;
+            if (newZoom.template) {
+                gantt.config.date_scale = null;
+                gantt.templates.date_scale = newZoom.template;
+            } else {
+                gantt.config.date_scale = newZoom.date_scale;
+                gantt.templates.date_scale = null; // Reset to default
+            }
+            gantt.config.subscales = newZoom.subscales;
+            gantt.config.min_column_width = newZoom.min_column_width;
+            gantt.render();
+        }
+    }
+
+    function ganttZoomIn() {
+        if (currentZoomLevelIndex > 0) {
+            applyZoom(currentZoomLevelIndex - 1);
+        }
+    }
+
+    function ganttZoomOut() {
+        if (currentZoomLevelIndex < zoomLevels.length - 1) {
+            applyZoom(currentZoomLevelIndex + 1);
+        }
+    }
+
     function translate(key, params = {}) {
         let translation = translations[currentLang]?.[key] || translations.fr[key] || key;
         for (const param in params) {
             translation = translation.replace(`{${param}}`, params[param]);
         }
         return translation;
+    }
+
+    function showNotification(message, type = 'success', params = {}, persistent = false) {
+        const translatedMessage = message.startsWith("notification_") ? translate(message, params) : message;
+        const div = document.createElement('div');
+        div.className = `notification ${type}`;
+        if (type === 'warning' || type === 'error') {
+            div.classList.add('overload-alert');
+        }
+        div.innerHTML = translatedMessage;
+
+        if (persistent) {
+            const closeBtn = document.createElement('span');
+            closeBtn.className = 'close-btn';
+            closeBtn.innerHTML = '&times;';
+            closeBtn.onclick = () => div.remove();
+            div.appendChild(closeBtn);
+        } else {
+            setTimeout(() => div.remove(), 4000);
+        }
+
+        let container = document.querySelector('.notification-stack');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'notification-stack';
+            document.body.appendChild(container);
+        }
+        container.appendChild(div);
+    }
+
+    function getFlatpickrDateFormatForLocale(lang) {
+        switch (lang) {
+            case 'fr': case 'es': case 'it': return "d/m/Y";
+            case 'de': return "d.m.Y";
+            default: return "Y-m-d";
+        }
+    }
+    
+    function getGanttDateFormatForLocale(lang) {
+        switch (lang) {
+            case 'fr': case 'es': case 'it': return "%d/%m/%Y";
+            case 'de': return "%d.%m/%Y";
+            default: return "%Y-%m-%d";
+        }
+    }
+
+    function setupDatePickers() {
+        if (datePickers.length > 0) {
+            datePickers.forEach(picker => picker.destroy());
+            datePickers = [];
+        }
+        const locale = (currentLang === 'en') ? 'default' : currentLang;
+        const dateFormat = getFlatpickrDateFormatForLocale(currentLang);
+        const pickerConfigs = ["#taskStart", "#taskEnd", "#customLightboxTaskStart", "#customLightboxTaskEnd", "#projectDeadline", "#customLightboxProjectStart", "#customLightboxProjectEnd"];
+        pickerConfigs.forEach(selector => {
+            const element = document.querySelector(selector);
+            if (element) {
+                const config = { dateFormat: dateFormat, locale: locale };
+                if (selector === "#taskStart") {
+                    config.onChange = function(selectedDates, dateStr, instance) {
+                        if (selectedDates.length > 0) {
+                            const endDatePicker = datePickers.find(p => p.element.id === 'taskEnd');
+                            const durationInput = document.getElementById('taskDuration');
+                            if (endDatePicker && endDatePicker.selectedDates.length > 0) {
+                                const duration = gantt.calculateDuration({start_date: selectedDates[0], end_date: endDatePicker.selectedDates[0]});
+                                durationInput.value = duration;
+                            } else if (durationInput.value > 0) {
+                                const endDate = gantt.calculateEndDate({start_date: selectedDates[0], duration: parseInt(durationInput.value)});
+                                endDatePicker.setDate(endDate, false);
+                            }
+                        }
+                    };
+                } else if (selector === "#taskEnd") {
+                    config.onChange = function(selectedDates, dateStr, instance) {
+                        if (selectedDates.length > 0) {
+                            const startDatePicker = datePickers.find(p => p.element.id === 'taskStart');
+                            const durationInput = document.getElementById('taskDuration');
+                            if (startDatePicker && startDatePicker.selectedDates.length > 0) {
+                                const duration = gantt.calculateDuration({start_date: startDatePicker.selectedDates[0], end_date: selectedDates[0]});
+                                durationInput.value = duration;
+                            }
+                        }
+                    };
+                } else if (selector === "#customLightboxTaskStart") {
+                    config.onChange = function() { updateLightboxSchedule('start'); };
+                } else if (selector === "#customLightboxTaskEnd") {
+                    config.onChange = function() { updateLightboxSchedule('end'); };
+                }
+                datePickers.push(flatpickr(element, config));
+            }
+        });
+        const taskDurationInput = document.getElementById('taskDuration');
+        if (taskDurationInput) {
+            taskDurationInput.removeEventListener('input', updateTaskDurationFromInput);
+            taskDurationInput.addEventListener('input', updateTaskDurationFromInput);
+        }
+    }
+
+    function updateTaskDurationFromInput() {
+        const taskStartPicker = datePickers.find(p => p.element.id === 'taskStart');
+        const taskEndPicker = datePickers.find(p => p.element.id === 'taskEnd');
+        const durationValue = parseInt(document.getElementById('taskDuration').value);
+        if (taskStartPicker && taskStartPicker.selectedDates.length > 0 && !isNaN(durationValue) && durationValue >= 0) {
+            const startDate = taskStartPicker.selectedDates[0];
+            const endDate = gantt.calculateEndDate({start_date: startDate, duration: durationValue});
+            if (taskEndPicker) taskEndPicker.setDate(endDate, false);
+        }
     }
 
     function applyTranslations() {
@@ -788,9 +884,10 @@
         currentLang = lang;
         setupDatePickers();
         applyTranslations();
-        if(gantt && gantt.$container) {
-            updateGantt();
-        }
+        // No need to call updateGantt here, syncAndRenderGantt will be called after init
+        // if(gantt && gantt.$container) {
+        //     updateGantt();
+        // }
     }
 
     function toggleSidebar() {
@@ -825,160 +922,196 @@
         btn.textContent = translate(key);
     }
 
-    function adjustColor(color, percent) {
-      let r = parseInt(color.substring(1, 3), 16);
-      let g = parseInt(color.substring(3, 5), 16);
-      let b = parseInt(color.substring(5, 7), 16);
-      r = parseInt(r * (100 + percent) / 100); g = parseInt(g * (100 + percent) / 100); b = parseInt(b * (100 + percent) / 100);
-      r = (r < 255) ? r : 255; g = (g < 255) ? g : 255; b = (b < 255) ? b : 255;
-      r = (r > 0) ? r : 0; g = (g > 0) ? g : 0; b = (b > 0) ? b : 0;
-      const rr = ((r.toString(16).length === 1) ? "0" + r.toString(16) : r.toString(16));
-      const gg = ((g.toString(16).length === 1) ? "0" + g.toString(16) : g.toString(16));
-      const bb = ((b.toString(16).length === 1) ? "0" + b.toString(16) : b.toString(16));
-      return `#${rr}${gg}${bb}`;
+    function weekendCss(date) {
+      return (date.getDay() === 0 || date.getDay() === 6) ? "weekend" : "";
     }
 
-    function getContrastColor(hexColor) {
-      if (!hexColor) return '#000000';
-      hexColor = hexColor.replace('#', '');
-      if (hexColor.length === 3) {
-        hexColor = hexColor.split('').map(char => char + char).join('');
-      }
-      if (hexColor.length !== 6) return '#000000';
-      const r = parseInt(hexColor.substring(0, 2), 16);
-      const g = parseInt(hexColor.substring(2, 4), 16);
-      const b = parseInt(hexColor.substring(4, 6), 16);
-      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      return luminance > 0.5 ? '#000000' : '#FFFFFF';
-    }
-
-    function showNotification(message, type = 'success', params = {}, persistent = false) {
-        const translatedMessage = message.startsWith("notification_") ? translate(message, params) : message;
-        const div = document.createElement('div');
-        div.className = `notification ${type}`;
-        if (type === 'warning' || type === 'error') {
-            div.classList.add('overload-alert');
-        }
-        div.innerHTML = translatedMessage;
-
-        if (persistent) {
-            const closeBtn = document.createElement('span');
-            closeBtn.className = 'close-btn';
-            closeBtn.innerHTML = '&times;';
-            closeBtn.onclick = () => div.remove();
-            div.appendChild(closeBtn);
-        } else {
-            setTimeout(() => div.remove(), 4000);
-        }
-
-        let container = document.querySelector('.notification-stack');
-        if (!container) {
-            container = document.createElement('div');
-            container.className = 'notification-stack';
-            document.body.appendChild(container);
-        }
-        container.appendChild(div);
-    }
-
-    function getFlatpickrDateFormatForLocale(lang) {
-        switch (lang) {
-            case 'fr': case 'es': case 'it': return "d/m/Y";
-            case 'de': return "d.m.Y";
-            default: return "Y-m-d";
-        }
-    }
-    
-    function getGanttDateFormatForLocale(lang) {
-        switch (lang) {
-            case 'fr': case 'es': case 'it': return "%d/%m/%Y";
-            case 'de': return "%d.%m.%Y";
-            default: return "%Y-%m-%d";
-        }
-    }
-
-    function setupDatePickers() {
-        if (datePickers.length > 0) {
-            datePickers.forEach(picker => picker.destroy());
-            datePickers = [];
-        }
-        const locale = (currentLang === 'en') ? 'default' : currentLang;
-        const dateFormat = getFlatpickrDateFormatForLocale(currentLang);
-        const pickerConfigs = ["#taskStart", "#taskEnd", "#customLightboxTaskStart", "#customLightboxTaskEnd", "#projectDeadline", "#customLightboxProjectStart", "#customLightboxProjectEnd"];
-        pickerConfigs.forEach(selector => {
-            const element = document.querySelector(selector);
-            if (element) {
-                const config = { dateFormat: dateFormat, locale: locale };
-                if (selector === "#taskStart") {
-                    config.onChange = function(selectedDates, dateStr, instance) {
-                        if (selectedDates.length > 0) {
-                            const endDatePicker = datePickers.find(p => p.element.id === 'taskEnd');
-                            const durationInput = document.getElementById('taskDuration');
-                            if (endDatePicker && endDatePicker.selectedDates.length > 0) {
-                                const duration = gantt.calculateDuration({start_date: selectedDates[0], end_date: endDatePicker.selectedDates[0]});
-                                durationInput.value = duration;
-                            } else if (durationInput.value > 0) {
-                                const endDate = gantt.calculateEndDate({start_date: selectedDates[0], duration: parseInt(durationInput.value)});
-                                endDatePicker.setDate(endDate, false);
-                            }
+    function getGanttColumns() {
+        return [
+            {
+                name: "text", label: translate('gantt_col_task'), width: '*', tree: true, resize: true,
+                template: function(task) {
+                    const taskText = (task.text || '').replace(/^[🔴🟡🟢]\s*/, ''); 
+                    if (task.type === gantt.config.types.milestone) {
+                        return taskText;
+                    }
+                    if (task.type === gantt.config.types.project) {
+                        const projectData = findTaskInProjectsModel(task.id);
+                        // Ensure progress is a number, default to 0 if NaN/undefined
+                        const progressValue = typeof projectData?.progress === 'number' ? projectData.progress : 0;
+                        return `${taskText} (${Math.round(progressValue * 100)}%)`;
+                    }
+                    let taskName = taskText;
+                    let memberDots = "";
+                    let progressDisplay = "";
+                    let taskDataInStore = findTaskInProjectsModel(task.id);
+                    if (taskDataInStore) {
+                        const memberIds = taskDataInStore.memberIds || [];
+                        const visibleMembers = members.filter(m => m.visible).filter(member => memberIds.includes(String(member.id)));
+                        if (visibleMembers.length > 0) {
+                            memberDots = visibleMembers.map(member => `<span class="member-indicator" style="background-color:${member.color}; vertical-align: middle;" title="${(member.name || '')}"></span>`).join("");
                         }
-                    };
-                } else if (selector === "#taskEnd") {
-                    config.onChange = function(selectedDates, dateStr, instance) {
-                        if (selectedDates.length > 0) {
-                            const startDatePicker = datePickers.find(p => p.element.id === 'taskStart');
-                            const durationInput = document.getElementById('taskDuration');
-                            if (startDatePicker && startDatePicker.selectedDates.length > 0) {
-                                const duration = gantt.calculateDuration({start_date: startDatePicker.selectedDates[0], end_date: selectedDates[0]});
-                                durationInput.value = duration;
-                            }
-                        }
-                    };
-                } else if (selector === "#customLightboxTaskStart") {
-                    config.onChange = function() { updateLightboxSchedule('start'); };
-                } else if (selector === "#customLightboxTaskEnd") {
-                    config.onChange = function() { updateLightboxSchedule('end'); };
+                        // Ensure progress is a number, default to 0 if NaN/undefined
+                        const progressValue = typeof taskDataInStore.progress === 'number' ? taskDataInStore.progress : 0;
+                        progressDisplay = ` (${Math.round(progressValue * 100)}%)`;
+                    } else {
+                       // Fallback for tasks not found in model (shouldn't happen often)
+                       const progressValue = typeof task.progress === 'number' ? task.progress : 0;
+                       progressDisplay = ` (${Math.round(progressValue * 100)}%)`;
+                    }
+                    return `${taskName} ${memberDots} ${progressDisplay}`;
                 }
-                datePickers.push(flatpickr(element, config));
+            },
+            {
+                name: "lock", label: "✔", width: 40, align: "center",
+                template: function(task) {
+                    return `<div class="gantt_grid_cell_lock" onclick="toggleTaskLock('${task.id}')">${task.locked ? '☐' : '✅'}</div>`;
+                }
+            }
+        ];
+    }
+
+    function findTaskInProjectsModel(taskId) {
+        if (!taskId || String(taskId) === "0") return null;
+        const targetId = String(taskId);
+        
+        // First, check if it's a top-level project/task directly
+        if (projects[targetId]) {
+            return projects[targetId];
+        }
+
+        let found = null;
+        function search(tasks) {
+            if (!tasks) return; 
+            for (const task of tasks) {
+                if (String(task.id) === targetId) {
+                    found = task;
+                    return;
+                }
+                if (task.tasks) {
+                    search(task.tasks);
+                    if (found) return;
+                }
+            }
+        }
+        // Then search recursively within all projects' tasks
+        search(Object.values(projects));
+        
+        return found;
+    }
+
+    function populateProjectDropdown(selectElementId, selectedParentId = '', currentEditingId = null, includeAllSummaryTasks = true, allowNoParent = true) {
+        const parentSelect = document.getElementById(selectElementId);
+        if (!parentSelect) return;
+        parentSelect.innerHTML = '';
+        if (allowNoParent) {
+            parentSelect.add(new Option(translate('no_parent'), "0"));
+        }
+        
+        const allPotentialParents = [];
+
+        // Function to recursively collect all tasks that can be parents
+        function collectAllTasks(tasks, level = 0) {
+            tasks.forEach(task => {
+                // Only allow project/mother tasks to be parents
+                if (task.type === gantt.config.types.project) {
+                    allPotentialParents.push({ id: task.id, name: task.name, level: level, type: task.type });
+                }
+                if (task.tasks) {
+                    collectAllTasks(task.tasks, level + 1);
+                }
+            });
+        }
+        
+        // Start collecting from top-level projects
+        collectAllTasks(Object.values(projects));
+
+        // Filter and add options to the dropdown
+        allPotentialParents.forEach(parent => {
+            // Exclude the task being edited from being its own parent or a child of itself
+            if (String(parent.id) === String(currentEditingId)) {
+                return; // Skip the task itself
+            }
+            // Exclude tasks that are children of the current task being edited
+            // This prevents creating circular dependencies
+            if (currentEditingId && gantt.isChildOf(parent.id, currentEditingId)) {
+                return; // Skip children of the current task
+            }
+
+            let prefix = "".padStart(parent.level * 4, ' '); // Use non-breaking space for indentation
+            const optionText = prefix + parent.name + (parent.type === gantt.config.types.project ? ' (Groupe)' : ''); // Add (Group) for clarity
+            const option = new Option(optionText, parent.id);
+            parentSelect.add(option);
+        });
+
+        // Set the selected value
+        parentSelect.value = selectedParentId || "0";
+    }
+
+    function recalculateProjectDatesAndProgress(taskId) {
+        if (!gantt.isTaskExists(taskId)) {
+            return;
+        }
+        const ganttTask = gantt.getTask(taskId);
+        if (!ganttTask || ganttTask.type !== gantt.config.types.project) return;
+        const taskDataStore = findTaskInProjectsModel(taskId);
+        if (!taskDataStore) {
+            return;
+        }
+
+        let totalWeightedProgress = 0; // Sum of (child duration * child progress)
+        let totalChildrenDuration = 0; // Sum of all children durations
+        let minStartDate = null;
+        let maxEndDate = null;
+
+        // Use gantt.getChildren to get direct children
+        const childrenIds = gantt.getChildren(taskId);
+
+        childrenIds.forEach(childId => {
+            const child = gantt.getTask(childId);
+            if (!child) return;
+
+            // If the child is a project, recursively calculate its progress first
+            if (child.type === gantt.config.types.project) {
+                recalculateProjectDatesAndProgress(child.id); // Recurse for nested projects
+                // After recursion, child.duration and child.progress in Gantt's internal state should be updated
+            }
+
+            // Now, use the (potentially updated) child's duration and progress
+            // Only include non-milestone tasks for duration/progress calculation
+            if (child.type !== gantt.config.types.milestone) {
+                totalChildrenDuration += child.duration;
+                totalWeightedProgress += child.duration * child.progress;
+            }
+
+            // Update min/max dates based on all children (including milestones and projects)
+            if (child.start_date && (!minStartDate || child.start_date < minStartDate)) {
+                minStartDate = child.start_date;
+            }
+            if (child.end_date && (!maxEndDate || child.end_date > maxEndDate)) {
+                maxEndDate = child.end_date;
             }
         });
-        const taskDurationInput = document.getElementById('taskDuration');
-        if (taskDurationInput) {
-            taskDurationInput.removeEventListener('input', updateTaskDurationFromInput);
-            taskDurationInput.addEventListener('input', updateTaskDurationFromInput);
-        }
-    }
 
-    function updateTaskDurationFromInput() {
-        const taskStartPicker = datePickers.find(p => p.element.id === 'taskStart');
-        const taskEndPicker = datePickers.find(p => p.element.id === 'taskEnd');
-        const durationValue = parseInt(document.getElementById('taskDuration').value);
-        if (taskStartPicker && taskStartPicker.selectedDates.length > 0 && !isNaN(durationValue) && durationValue >= 0) {
-            const startDate = taskStartPicker.selectedDates[0];
-            const endDate = gantt.calculateEndDate({start_date: startDate, duration: durationValue});
-            if (taskEndPicker) taskEndPicker.setDate(endDate, false);
-        }
-    }
+        // Calculate overall progress for the current project
+        const calculatedProgress = totalChildrenDuration > 0 ? totalWeightedProgress / totalChildrenDuration : 0;
+        
+        // Calculate overall duration for the current project based on its children's min/max dates
+        const calculatedDuration = (minStartDate && maxEndDate) ? gantt.calculateDuration({start_date: minStartDate, end_date: maxEndDate}) : 0;
 
-    function addOrUpdateMember() {
-      saveStateToHistory();
-      const editMemberId = document.getElementById('editMemberId').value;
-      const name = document.getElementById('memberName').value.trim();
-      const color = document.getElementById('memberColor').value;
-      const actionBtn = document.getElementById('memberActionBtn');
-      if (!name) { showNotification('notification_enter_name', 'error'); return; }
-      if (members.some(m => m.name === name && String(m.id) !== String(editMemberId))) { showNotification('notification_member_exists', 'error'); return; }
-      if (editMemberId) {
-        const member = members.find(m => String(m.id) === String(editMemberId));
-        if (member) { member.name = name; member.color = color; showNotification('notification_member_edited', 'success', {name}); }
-        document.getElementById('editMemberId').value = '';
-        actionBtn.textContent = translate('add_member_btn'); actionBtn.classList.replace('btn-warning', 'btn-primary');
-      } else {
-        members.push({ id: crypto.randomUUID(), name, color, visible: true });
-        showNotification('notification_member_added', 'success', {name});
-      }
-      document.getElementById('memberName').value = ''; document.getElementById('memberColor').value = '#667eea';
-      renderMembers(); updateTaskMembers(); updateGantt();
-      updateUndoButtonState();
+        // Update the model with calculated values
+        taskDataStore.start = minStartDate ? gantt.date.date_to_str(gantt.config.date_format)(minStartDate) : null;
+        taskDataStore.end = maxEndDate ? gantt.date.date_to_str(gantt.config.date_format)(maxEndDate) : null;
+        taskDataStore.duration = calculatedDuration;
+        taskDataStore.progress = calculatedProgress; // Ensure this is always a number
+        
+        // Also update the Gantt task's internal state to reflect these calculated values
+        // This is crucial for Gantt to display the correct summary
+        ganttTask.start_date = minStartDate;
+        ganttTask.end_date = maxEndDate;
+        ganttTask.duration = calculatedDuration;
+        ganttTask.progress = calculatedProgress;
+        gantt.updateTask(taskId); // Update Gantt's internal state
     }
 
     function renderMembers() {
@@ -1013,14 +1146,570 @@
                 </div>`;
         }).join('');
     }
-	
-	function getAllTasks() {
-		let tasks = [];
-		gantt.eachTask(function(task) {
-			tasks.push(task);
-		});
-		return tasks;
+
+    function renderProjects() {
+      const list = document.getElementById('projectList'); const select = document.getElementById('taskProject');
+      if (!list || !select) return;
+      list.innerHTML = Object.values(projects).map(project => {
+          let priorityEmoji = '';
+          if (project.priority === "high") priorityEmoji = "🔴 ";
+          else if (project.priority === "medium") priorityEmoji = "🟡 ";
+          else if (project.priority === "low") priorityEmoji = "🟢 ";
+          return `
+        <div class="task-item" style="border-left: 4px solid ${project.color};">
+          <input type="checkbox" ${project.visible ? 'checked' : ''} onchange="toggleProjectVisibility('${project.id}')">
+          <span class="member-indicator" style="background-color: ${project.color};"></span> ${priorityEmoji}${project.name} (${translate('priority_' + project.priority)})
+          <button class="btn btn-sm btn-outline-primary me-2" onclick="openCustomLightbox('${project.id}')">✏️</button>
+          <button class="btn btn-sm btn-outline-danger" onclick="removeProject('${project.id}')">🗑️</button>
+        </div>`;
+      }).join('');
+    }
+
+    function updateTaskMembers() {
+      const container = document.getElementById('taskMembers');
+      if (!container) return;
+      container.innerHTML = members.length === 0 ? translate('notification_no_members') : members.map(m => `
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" value="${m.id}" id="task-member-${m.id}" name="task-member-${m.id}">
+          <label class="form-check-label" for="task-member-${m.id}"> <span class="member-indicator" style="background-color: ${m.color};"></span> ${m.name} </label>
+        </div>`).join('');
+    }
+
+    function toggleNewTaskFieldsVisibility() {
+        const taskType = document.getElementById('taskType').value;
+        const normalFields = document.getElementById('normalTaskFields');
+        const summaryTaskNote = document.getElementById('summaryTaskNote');
+        if (taskType === 'task') {
+            normalFields.style.display = 'block';
+            summaryTaskNote.style.display = 'none';
+            populateProjectDropdown('taskProject', '', null, true, true); 
+            document.getElementById('taskStart').setAttribute('required', 'required');
+            document.getElementById('taskEnd').setAttribute('required', 'required');
+            document.getElementById('taskDuration').setAttribute('required', 'required');
+        } else {
+            normalFields.style.display = 'none';
+            summaryTaskNote.style.display = 'block';
+            // For mother tasks, only allow existing projects/mother tasks as parents
+            populateProjectDropdown('taskProject', '', null, true, false); 
+            const taskProjectSelect = document.getElementById('taskProject');
+            if (taskProjectSelect.options.length > 0 && taskProjectSelect.value === "") {
+                // If no parent is selected and options exist, select the first one
+                if (taskProjectSelect.options.length > 0) {
+                     taskProjectSelect.selectedIndex = 0;
+                }
+            }
+        }
+    }
+
+    function renderSidebars() {
+      renderMembers();
+      renderProjects();
+      updateTaskMembers();
+      toggleNewTaskFieldsVisibility();
+    }
+
+    function updateUndoButtonState() {
+        const undoButton = document.getElementById('undoButton');
+        if (undoButton) undoButton.disabled = historyStack.length <= 1; 
+    }
+
+    function memorizeCollapseState() {
+	  collapsedStateMap = {};
+	  gantt.eachTask(function (task) {
+		if (task.type === "project") collapsedStateMap[task.id] = !task.$open;
+	  });
 	}
+
+	function restoreCollapseState() {
+	  gantt.eachTask(function (task) {
+		if (collapsedStateMap[task.id] === true) gantt.close(task.id);
+        else if (collapsedStateMap[task.id] === false) gantt.open(task.id);
+	  });
+	}
+
+    // New function to centralize Gantt update and recalculation
+    function syncAndRenderGantt() {
+        isUpdatingGanttProgrammatically = true;
+        updateGantt(); // This clears and re-parses from our 'projects' model
+        manualRecalculate(true); // This re-schedules based on the newly parsed Gantt data
+        isUpdatingGanttProgrammatically = false; // Reset flag after full cycle
+        updateUndoButtonState(); // Update undo button state after all changes
+    }
+
+    function updateGantt() {
+		if (!gantt || !gantt.$container) { return; }
+        const scrollState = gantt.getScrollState();
+		memorizeCollapseState(); 
+		gantt.clearAll();
+		const ganttDataTasks = [];
+
+        // Recursive function to get all tasks and their children that should be displayed
+        function getVisibleTasks(tasks, parentVisible) {
+            tasks.forEach(item => {
+                if (!item) return;
+
+                const isProjectVisible = item.type === gantt.config.types.project ? item.visible : true;
+                const shouldDisplay = parentVisible && isProjectVisible;
+
+                if (shouldDisplay) {
+                    // Convert start/end dates from string to Date objects for Gantt.parse
+                    const startDateObj = item.start ? gantt.date.str_to_date(gantt.config.date_format)(item.start) : null;
+                    const endDateObj = item.end ? gantt.date.str_to_date(gantt.config.date_format)(item.end) : null;
+
+                    const ganttTask = {
+                        id: item.id,
+                        name: item.name,
+                        text: item.name,
+                        start_date: startDateObj,
+                        end_date: endDateObj,
+                        duration: item.duration,
+                        progress: item.progress,
+                        parent: item.parent,
+                        type: item.type,
+                        color: item.color,
+                        locked: item.locked,
+                        open: item.open,
+                        // Add visible property to Gantt task for onBeforeTaskDisplay to use
+                        visible: item.visible // This will be used for projects
+                    };
+                    ganttDataTasks.push(ganttTask);
+                    console.log("[DEBUG] getVisibleTasks: Added Gantt task:", ganttTask.name, "(ID:", ganttTask.id, ", Parent:", ganttTask.parent, ", Type:", ganttTask.type, ")");
+                } else {
+                    console.log("[DEBUG] getVisibleTasks: Skipping invisible task:", item.name, "(ID:", item.id, ", Parent:", item.parent, ", Type:", item.type, ")");
+                }
+
+                if (item.tasks && item.tasks.length > 0) {
+                    console.log("[DEBUG] getVisibleTasks: Processing children of", item.name);
+                    getVisibleTasks(item.tasks, shouldDisplay); // Pass down parent's visibility
+                }
+            });
+        }
+        
+        // Start collecting tasks from top-level projects, assuming they are initially visible
+        console.log("[DEBUG] updateGantt: Starting collection of visible tasks from top-level projects.");
+        getVisibleTasks(Object.values(projects), true);
+		
+		gantt.parse({ data: ganttDataTasks, links: allLinks });
+		restoreCollapseState(); 
+		
+        // Recalculate project dates/progress after parsing, before rendering
+		gantt.eachTask(function(task) {
+			if (task.type === gantt.config.types.project) {
+				recalculateProjectDatesAndProgress(task.id);
+			}
+		});
+		gantt.render();
+        if (scrollState) gantt.scrollTo(scrollState.x, scrollState.y);
+		renderSidebars(); // Re-render sidebars to reflect any changes in members/projects lists
+	}
+
+    function manualRecalculate(isInternalCall = false) {
+        if (!isInternalCall) saveStateToHistory();
+
+        let changed = true;
+        let iterations = 0;
+        const maxIterations = gantt.getTaskCount() * 2; 
+
+        const allGanttTasks = [];
+        gantt.eachTask(function(task) {
+            allGanttTasks.push(task);
+        });
+
+        allGanttTasks.sort((a, b) => a.start_date - b.start_date);
+
+        while (changed && iterations < maxIterations) {
+            changed = false;
+            allGanttTasks.forEach(task => {
+                if (task.type !== gantt.config.types.task || task.readonly) return;
+
+                const predecessors = allLinks.filter(link => String(link.target) === String(task.id) && link.type === '0'); 
+                if (predecessors.length === 0) return;
+
+                let latestPredecessorEndDate = null;
+
+                predecessors.forEach(link => {
+                    const predecessorTask = gantt.getTask(link.source); 
+                    if (predecessorTask && predecessorTask.end_date) {
+                        if (!latestPredecessorEndDate || predecessorTask.end_date > latestPredecessorEndDate) {
+                            latestPredecessorEndDate = predecessorTask.end_date;
+                        }
+                    }
+                });
+
+                if (latestPredecessorEndDate) {
+                    let requiredStartDate = gantt.date.add(latestPredecessorEndDate, 1, 'day');
+                    if (gantt.config.skip_off_time) {
+                        while (!gantt.isWorkTime({ date: requiredStartDate, unit: "day" })) {
+                            requiredStartDate = gantt.date.add(requiredStartDate, 1, 'day');
+                        }
+                    }
+                    
+                    const currentStartDate = task.start_date;
+
+                    if (requiredStartDate > currentStartDate) {
+                        task.start_date = requiredStartDate;
+                        task.end_date = gantt.calculateEndDate({ start_date: task.start_date, duration: task.duration });
+                        
+                        const modelTask = findTaskInProjectsModel(task.id);
+                        if (modelTask) {
+                            modelTask.start = gantt.date.date_to_str(gantt.config.date_format)(task.start_date);
+                            modelTask.end = gantt.date.date_to_str(gantt.config.date_format)(task.end_date);
+                        }
+                        gantt.updateTask(task.id); 
+                        changed = true;
+                    }
+                }
+            });
+            iterations++;
+        }
+
+        gantt.eachTask(task => {
+            if (task.type === gantt.config.types.project) {
+                recalculateProjectDatesAndProgress(task.id);
+            }
+        });
+
+        if (!isInternalCall) {
+            syncAndRenderGantt(); 
+            showNotification("notification_recalculated", 'success');
+        }
+    }
+
+    function saveStateToHistory() {
+        const currentState = {
+            members: JSON.parse(JSON.stringify(members)),
+            projects: JSON.parse(JSON.stringify(projects)),
+            allLinks: JSON.parse(JSON.stringify(allLinks)),
+        };
+        historyStack.push(currentState);
+        if (historyStack.length > MAX_HISTORY_SIZE) historyStack.shift();
+        updateUndoButtonState();
+    }
+
+    function undoLastAction() {
+        if (historyStack.length > 1) {
+            historyStack.pop();
+            const previousState = historyStack[historyStack.length - 1];
+            members = previousState.members;
+            projects = previousState.projects;
+            allLinks = previousState.allLinks;
+            syncAndRenderGantt(); // Call central sync function
+            showNotification('Action annulée.');
+        } else {
+            showNotification('Impossible d\'annuler davantage.', 'error');
+        }
+    }
+
+    function initGantt() {
+      gantt.plugins({ 
+          export_api: true, 
+          zoom: true, 
+          tooltip: true
+          // auto_scheduling: true // Supprimé car c'est une fonctionnalité PRO
+      });
+      gantt.config.work_time = true;
+      gantt.config.skip_off_time = true;
+      // gantt.config.auto_scheduling = true; // Supprimé
+      // gantt.config.auto_scheduling_strict = true; // Supprimé
+      // gantt.config.auto_scheduling_initial = true; // Supprimé
+      gantt.config.date_format = "%Y-%m-%d";
+      gantt.config.grid_resize = true;
+      gantt.config.drag_progress = true;
+      gantt.config.tooltip_timeout = 30;
+      gantt.config.show_grid = isGridVisible;
+      gantt.config.order_branch = true;
+      gantt.config.order_branch_free = true;
+      gantt.config.auto_types = true;
+      gantt.config.drag_project = false;
+      gantt.setWorkTime({ day: 0, hours: false });
+      gantt.setWorkTime({ day: 6, hours: false });
+      gantt.templates.date_grid = function(date){
+          let format;
+          switch(currentLang) {
+              case 'fr': case 'es': case 'it': format = "%d/%m/%Y"; break;
+              case 'de': format = "%d.%m.%Y"; break;
+              default: format = "%Y-%m-%d";
+          }
+          return gantt.date.date_to_str(format)(date);
+      };
+      gantt.config.columns = getGanttColumns();
+      gantt.init("gantt_here");
+      
+      // --- EVENT HANDLERS ---
+
+      gantt.attachEvent("onAfterTaskDrag", function(id, mode, e){
+          if (isUpdatingGanttProgrammatically) {
+              return;
+          }
+          saveStateToHistory(); // Save state *before* model modification
+          
+          const ganttTask = gantt.getTask(id);
+          const taskInDataModel = findTaskInProjectsModel(id);
+          if (!taskInDataModel) {
+              showNotification(`Erreur critique: Tâche non trouvée dans le modèle de données (ID: ${id}) après un glisser-déposer. Veuillez vérifier la console pour plus de détails.`, 'error', {}, true);
+              // console.error("CRITICAL ERROR: Task not found in data model after drag for ID:", id, "Gantt task:", JSON.parse(JSON.stringify(ganttTask)), "Current projects state:", JSON.parse(JSON.stringify(projects)));
+              return;
+          }
+
+
+          const oldParentId = taskInDataModel.parent;
+          const newParentId = String(ganttTask.parent);
+
+          // Update the task in our data model
+          taskInDataModel.start = gantt.date.date_to_str(gantt.config.date_format)(ganttTask.start_date);
+          taskInDataModel.duration = ganttTask.duration;
+          taskInDataModel.progress = ganttTask.progress;
+          taskInDataModel.end = gantt.date.date_to_str(gantt.config.date_format)(ganttTask.end_date); // Sync end date too
+          taskInDataModel.type = ganttTask.type; // Sync type if it changed (e.g., from task to project by drag)
+
+          // Handle parent change in the model
+          if (oldParentId !== newParentId) {
+              let oldParentData = findTaskInProjectsModel(oldParentId);
+              if (oldParentData && oldParentData.tasks) {
+                  const index = oldParentData.tasks.findIndex(t => t.id === id);
+                  if (index > -1) {
+                      oldParentData.tasks.splice(index, 1);
+                  }
+              } else if (oldParentId === "0") { // Was a top-level project/task
+                  delete projects[id];
+              }
+
+              let newParentData = findTaskInProjectsModel(newParentId);
+              if (newParentData) {
+                  if (!newParentData.tasks) {
+                      newParentData.tasks = [];
+                  }
+                  newParentData.tasks.push(taskInDataModel);
+              } else if (newParentId === "0") { // New parent is root (0), so it becomes a top-level project/task
+                   projects[id] = taskInDataModel;
+              } else {
+                  showNotification(`Erreur: Nouveau parent (ID: ${newParentId}) non trouvé pour la tâche ${id}. Veuillez vérifier la console.`, 'error', {}, true);
+                  // console.error(`ERROR: New parent (ID: ${newParentId}) not found for task ${id}.`);
+              }
+              taskInDataModel.parent = newParentId;
+          }
+          
+          syncAndRenderGantt(); // Call the central sync function
+      });
+
+      gantt.attachEvent("onBeforeRowDragEnd", function(id, parent, tindex) {
+          if (parent == 0) return true;
+          if (!gantt.isTaskExists(parent)) return false;
+          const newParentTask = gantt.getTask(parent);
+          if (newParentTask.type === 'task') {
+              showNotification("Une tâche ne peut pas contenir d'autres tâches.", "error");
+              return false;
+          }
+          return true;
+      });
+      
+      gantt.attachEvent("onAfterTaskUpdate", function(id, task){
+          if (isUpdatingGanttProgrammatically) {
+              return;
+          }
+          saveStateToHistory(); // Save state *before* model modification
+
+          const taskInDataModel = findTaskInProjectsModel(id);
+          if (!taskInDataModel) {
+              showNotification(`Erreur critique: Tâche non trouvée dans le modèle de données (ID: ${id}) après une mise à jour. Veuillez vérifier la console pour plus de détails.`, 'error', {}, true);
+              // console.error("CRITICAL ERROR: Task not found in data model for ID:", id, "Gantt task:", JSON.parse(JSON.stringify(task)), "Current projects state:", JSON.parse(JSON.stringify(projects)));
+              return;
+          }
+
+          // Update our data model with the changes from the Gantt task object
+          taskInDataModel.name = task.text;
+          taskInDataModel.text = task.text;
+          taskInDataModel.start = gantt.date.date_to_str(gantt.config.date_format)(task.start_date);
+          taskInDataModel.duration = task.duration;
+          taskInDataModel.progress = task.progress;
+          taskInDataModel.end = gantt.date.date_to_str(gantt.config.date_format)(task.end_date); // Sync end date too
+          taskInDataModel.type = task.type; 
+          taskInDataModel.parent = String(task.parent); // Ensure parent is string
+
+          syncAndRenderGantt(); 
+      });
+
+      gantt.attachEvent("onAfterLinkAdd", function(id, link) {
+        if (isUpdatingGanttProgrammatically) return;
+        saveStateToHistory();
+        const newLink = { id: crypto.randomUUID().toString(), source: String(link.source), target: String(link.target), type: String(link.type) };
+        allLinks.push(newLink);
+        gantt.changeLinkId(id, newLink.id); // Update Gantt's link ID to match our new UUID
+        showNotification("notification_link_added");
+        syncAndRenderGantt(); // Call the central sync function
+        return true;
+      });
+
+      gantt.attachEvent("onAfterLinkDelete", function(id, link) {
+        if (isUpdatingGanttProgrammatically) return;
+        saveStateToHistory();
+        allLinks = allLinks.filter(l => String(l.id) !== String(id));
+        showNotification("notification_link_removed");
+        syncAndRenderGantt(); // Call the central sync function
+        return true;
+      });
+      
+      gantt.attachEvent("onAfterTaskDelete", function(id, task) {
+          if (isUpdatingGanttProgrammatically) return;
+          saveStateToHistory();
+          const parentId = String(task.parent);
+          let parentModel = findTaskInProjectsModel(parentId);
+          if (!parentModel) { // It was a top-level project/task
+              delete projects[id];
+          } else if (parentModel.tasks) {
+              const index = parentModel.tasks.findIndex(t => t.id === id);
+              if (index > -1) parentModel.tasks.splice(index, 1);
+          }
+          allLinks = allLinks.filter(l => String(l.source) !== String(id) && String(l.target) !== String(id));
+          showNotification('notification_task_deleted', 'success', {name: (task.text || '').replace(/^[🔴🟡🟢]\s*/, '').trim()});
+          syncAndRenderGantt(); // Call the central sync function
+      });
+      
+      applyZoom(currentZoomLevelIndex);
+      
+      gantt.templates.task_text = function(start, end, task){
+          const taskText = (task.text || '').replace(/^[🔴🟡🟢]\s*/, ''); 
+          if (task.type === gantt.config.types.milestone) return taskText;
+          // Ensure progress is a number, default to 0 if NaN/undefined
+          const progressValue = typeof task.progress === 'number' ? task.progress : 0;
+          let progressDisplay = ` (${Math.round(progressValue * 100)}%)`;
+          if (task.type === gantt.config.types.project) return `${taskText}${progressDisplay}`;
+          
+          let taskDataInStore = findTaskInProjectsModel(task.id);
+          let memberDots = "";
+          if (taskDataInStore) {
+              const memberIds = taskDataInStore.memberIds || [];
+              const visibleMembers = members.filter(m => m.visible).map(m => m.id);
+              if (visibleMembers.length > 0) {
+                  memberDots = visibleMembers.map(member => `<span class="member-indicator" style="background-color:${members.find(m => m.id === member).color}; vertical-align: middle;" title="${(members.find(m => m.id === member).name || '')}"></span>`).join("");
+              }
+          }
+          return `${taskText} ${memberDots} ${progressDisplay}`;
+      };
+      gantt.templates.grid_row_class = function(start, end, task) {
+          let rowClass = "";
+          let taskDataInStore = findTaskInProjectsModel(task.id);
+          if (taskDataInStore) {
+              let effectivePriority = taskDataInStore.priority || 'low';
+              if (effectivePriority === 'project' && String(task.parent) !== "0") {
+                  let parent = findTaskInProjectsModel(task.parent);
+                  while(parent){
+                      if(parent.priority && parent.priority !== 'project'){
+                          effectivePriority = parent.priority;
+                          break;
+                      }
+                      parent = findTaskInProjectsModel(parent.parent);
+                  }
+              }
+              rowClass += ` priority-${effectivePriority}`;
+          }
+          if (highlightedInfo.taskIds.includes(task.id)) {
+              rowClass += " " + highlightedInfo.level;
+          }
+          return rowClass.trim();
+      };
+      gantt.templates.task_class = function(start, end, task){
+        let task_class = "";
+        if (task.readonly) task_class += " task-locked";
+        if (highlightedInfo.taskIds.includes(task.id)) task_class += " " + highlightedInfo.level;
+        return task_class.trim();
+      };
+      gantt.templates.timeline_cell_class = function(item, date) {
+        if (date.getDay() === 0 || date.getDay() === 6) return "weekend";
+        return "";
+      };
+      gantt.templates.tooltip_text = function(start, end, task){
+        const taskText = (task.text || '').replace(/^[🟡🟢]\s*/, '').replace(/\s+\(.*?\)$/, '').trim(); 
+        let html = `<b>${taskText}</b><br/>`;
+        html += `<b>${translate('gantt_col_start_date')}:</b> ${gantt.templates.date_grid(start)}<br/>`;
+        if (task.type !== gantt.config.types.milestone) {
+            html += `<b>${translate('gantt_col_end_date')}:</b> ${gantt.templates.date_grid(gantt.calculateEndDate({start_date: start, duration: task.duration}))}<br/>`;
+            html += `<b>${translate('gantt_col_duration')}:</b> ${task.duration} ${translate('gantt_col_duration').includes('(j)') ? 'j' : 'd'}<br/>`;
+            // Ensure progress is a number, default to 0 if NaN/undefined
+            const progressValue = typeof task.progress === 'number' ? task.progress : 0;
+            html += `<b>${translate('gantt_col_progress')}:</b> ${Math.round(progressValue * 100)}%<br/>`;
+        }
+        let taskDataInStore = findTaskInProjectsModel(task.id);
+        if (taskDataInStore && taskDataInStore.type !== gantt.config.types.project) {
+            const memberIds = taskDataInStore.memberIds || [];
+            if (memberIds.length > 0) {
+                const memberNames = memberIds.map(id => (members.find(m => String(m.id) === String(id)) || {}).name).filter(Boolean).join(", ");
+                if (memberNames) html += `<b>${translate('gantt_col_members')}:</b> ${memberNames}<br/>`;
+            }
+            if (taskDataInStore.comments) {
+                html += `<b>${translate('custom_lightbox_task_comments_label')}:</b> ${taskDataInStore.comments.substring(0, 100)}...<br/>`;
+            }
+        }
+        return html;
+      };
+      gantt.attachEvent("onBeforeLightbox", function(id){
+        openCustomLightbox(id);
+        return false;
+      });
+      gantt.attachEvent("onBeforeTaskDrag", function(id, mode, task){ return !task.readonly; });
+      gantt.attachEvent("onBeforeTaskResize", function(id, mode, task){ return !task.readonly; });
+      // gantt.attachEvent("onBeforeTaskAutoSchedule", function(task, start, link, predecessor){ return !task.readonly; }); // Supprimé
+      gantt.attachEvent("onBeforeTaskDisplay", function(id, task) {
+          const taskData = findTaskInProjectsModel(id);
+          
+          // If the task itself is a project, check its visibility directly
+          if (task.type === gantt.config.types.project) {
+              return taskData && taskData.visible;
+          }
+
+          // For normal tasks, check if their direct project parent is visible
+          if (task.parent && task.parent !== "0") {
+              let currentParent = findTaskInProjectsModel(task.parent);
+              while (currentParent) {
+                  if (currentParent.type === gantt.config.types.project && !currentParent.visible) {
+                      return false; // Parent project is not visible, so hide this task
+                  }
+                  currentParent = findTaskInProjectsModel(currentParent.parent); // Check grandparent
+              }
+          } else { // Top-level task not part of a project
+              // If it's a top-level task (parent "0"), check its own visibility property if it were a project.
+              // This case is less common but ensures consistency.
+              if (taskData && taskData.type === gantt.config.types.task && !taskData.visible) {
+                  return false;
+              }
+          }
+
+          // Check member visibility for normal tasks
+          if (task.type === gantt.config.types.task && taskData && taskData.memberIds) {
+              const visibleMemberIds = members.filter(m => m.visible).map(m => m.id);
+              // If the task has no assigned members, it's visible by default (unless project hides it)
+              if (taskData.memberIds.length === 0) {
+                  return true;
+              }
+              // If it has assigned members, it's visible only if at least one assigned member is visible
+              return taskData.memberIds.some(memberId => visibleMemberIds.includes(memberId));
+          }
+          
+          return true; // Default to visible if no specific hiding condition met
+      });
+      applyTranslations();
+    }
+
+    function addOrUpdateMember() {
+      saveStateToHistory();
+      const editMemberId = document.getElementById('editMemberId').value;
+      const name = document.getElementById('memberName').value.trim();
+      const color = document.getElementById('memberColor').value;
+      const actionBtn = document.getElementById('memberActionBtn');
+      if (!name) { showNotification('notification_enter_name', 'error'); return; }
+      if (members.some(m => m.name === name && String(m.id) !== String(editMemberId))) { showNotification('notification_member_exists', 'error'); return; }
+      if (editMemberId) {
+        const member = members.find(m => String(m.id) === String(editMemberId));
+        if (member) { member.name = name; member.color = color; showNotification('notification_member_edited', 'success', {name}); }
+        document.getElementById('editMemberId').value = '';
+        actionBtn.textContent = translate('add_member_btn'); actionBtn.classList.replace('btn-warning', 'btn-primary');
+      } else {
+        members.push({ id: crypto.randomUUID().toString(), name, color, visible: true }); // Ensure ID is string
+        showNotification('notification_member_added', 'success', {name});
+      }
+      document.getElementById('memberName').value = ''; document.getElementById('memberColor').value = '#667eea';
+      syncAndRenderGantt(); // Call central sync function
+    }
 
     function editMember(id) {
       const member = members.find(m => String(m.id) === String(id));
@@ -1050,9 +1739,8 @@
         updateMemberIdsInTask(project);
         project.tasks.forEach(task => updateMemberIdsInTask(task));
       });
-      renderMembers(); updateTaskMembers(); updateGantt();
+      syncAndRenderGantt(); // Call central sync function
       showNotification('notification_member_removed', 'success', {name: memberName});
-      updateUndoButtonState();
     }
 
     function toggleMemberVisibility(memberId) {
@@ -1060,21 +1748,10 @@
       const member = members.find(m => String(m.id) === String(memberId));
       if (member) {
         member.visible = !member.visible;
-        gantt.refreshData();
-        renderMembers();
+        // No gantt.refreshData() here, syncAndRenderGantt will handle it
+        syncAndRenderGantt(); // Call central sync function
         showNotification('notification_visibility_updated', 'success', {name: member.name});
       }
-      updateUndoButtonState();
-    }
-
-    function updateTaskMembers() {
-      const container = document.getElementById('taskMembers');
-      if (!container) return;
-      container.innerHTML = members.length === 0 ? translate('notification_no_members') : members.map(m => `
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" value="${m.id}" id="task-member-${m.id}" name="task-member-${m.id}">
-          <label class="form-check-label" for="task-member-${m.id}"> <span class="member-indicator" style="background-color: ${m.color};"></span> ${m.name} </label>
-        </div>`).join('');
     }
 
     function addProject() {
@@ -1085,8 +1762,18 @@
           showNotification('notification_project_exists', 'error');
           return;
       }
-      const projectId = crypto.randomUUID();
-      const startDate = new Date().toISOString().split('T')[0];
+      const projectId = crypto.randomUUID().toString(); // Ensure ID is string
+      const today = new Date();
+      const startDate = (daysOffset) => {
+          const date = gantt.date.add(today, daysOffset, 'day');
+          if (gantt.config.skip_off_time) {
+              while (!gantt.isWorkTime({date: date, unit: "day"})) {
+                  date.setDate(date.getDate() + 1);
+              }
+          }
+          return gantt.date.date_to_str(gantt.config.date_format)(date);
+      };
+
       const defaultTasksTemplates = [
         { key: 'default_task_cahier_des_charges', duration: 5, initialDelay: 0 },
         { key: 'default_task_conception_pedagogique', duration: 7, initialDelay: 5 },
@@ -1094,35 +1781,42 @@
         { key: 'default_task_developpement_interactif', duration: 8, initialDelay: 22 },
         { key: 'default_task_tests_validation', duration: 5, initialDelay: 30 }
       ];
-      let currentDate = new Date(startDate);
-      if (isNaN(currentDate.getTime())) {
-          currentDate = new Date();
-      }
+      
+      let currentCalcDate = new Date(today); // Use a mutable date for calculations
+
       const tasks = defaultTasksTemplates.map((taskTemplate) => {
         const taskName = translate(taskTemplate.key, { projectName: name });
-        let actualStartDate = gantt.date.add(currentDate, taskTemplate.initialDelay, "day");
+        
+        let taskStartDate = gantt.date.add(currentCalcDate, taskTemplate.initialDelay, "day");
         if (gantt.config.skip_off_time) {
-            while (!gantt.isWorkTime({date: actualStartDate, unit: "day"})) {
-                actualStartDate.setDate(actualStartDate.getDate() + 1);
+            while (!gantt.isWorkTime({date: taskStartDate, unit: "day"})) {
+                taskStartDate.setDate(taskStartDate.getDate() + 1);
             }
         }
-        const taskStart = gantt.date.date_to_str(gantt.config.date_format)(actualStartDate);
-        let tempGanttTaskForCalc = {start_date: actualStartDate, duration: taskTemplate.duration};
-        let taskEnd = gantt.date.date_to_str(gantt.config.date_format)(gantt.calculateEndDate(tempGanttTaskForCalc));
+        
         const taskObj = {
-          id: crypto.randomUUID(), name: taskName, text: taskName, start: taskStart, end: taskEnd, duration: taskTemplate.duration,
-          progress: 0, project: name, parent: projectId, memberIds: members.length > 0 ? [members[Math.floor(Math.random() * members.length)].id] : [],
+          id: crypto.randomUUID().toString(), name: taskName, text: taskName, 
+          start: gantt.date.date_to_str(gantt.config.date_format)(taskStartDate), 
+          duration: taskTemplate.duration,
+          progress: 0, project: name, parent: projectId, 
+          memberIds: members.length > 0 ? [members[Math.floor(Math.random() * members.length)].id] : [],
           priority: document.getElementById('projectPriority').value,
           comments: "", color: "#5cb85c", type: gantt.config.types.task, locked: false
         };
+        // Calculate end date after duration is set
+        const taskEndDate = gantt.calculateEndDate({start_date: gantt.date.str_to_date(gantt.config.date_format)(taskObj.start), duration: taskObj.duration});
+        taskObj.end = gantt.date.date_to_str(gantt.config.date_format)(taskEndDate);
+        
         return taskObj;
       });
-      let projectStartDate = tasks.length > 0 ? tasks[0].start : new Date().toISOString().split('T')[0];
-      let projectEndDate = tasks.length > 0 ? tasks[tasks.length - 1].end : gantt.date.date_to_str(gantt.config.date_format)(gantt.calculateEndDate({start_date: new Date(), duration: 30}));
+
+      let projectStartDate = tasks.length > 0 ? tasks[0].start : gantt.date.date_to_str(gantt.config.date_format)(today);
+      let projectEndDate = tasks.length > 0 ? tasks[tasks.length - 1].end : gantt.date.date_to_str(gantt.config.date_format)(gantt.calculateEndDate({start_date: today, duration: 30}));
       let projectDuration = tasks.length > 0 ? gantt.calculateDuration({
           start_date: gantt.date.str_to_date(gantt.config.date_format)(projectStartDate),
           end_date: gantt.date.str_to_date(gantt.config.date_format)(projectEndDate)
       }) : 30;
+      
       projects[projectId] = {
         name, description: document.getElementById('projectDescription').value, deadline: document.getElementById('projectDeadline').value,
         priority: document.getElementById('projectPriority').value, color: document.getElementById('projectColor').value,
@@ -1132,37 +1826,16 @@
       document.getElementById('projectName').value = ''; document.getElementById('projectDescription').value = '';
       document.getElementById('projectDeadline').value = ''; document.getElementById('projectPriority').value = 'low';
       document.getElementById('projectColor').value = '#28a745';
-      renderProjects(); updateGantt();
+      syncAndRenderGantt(); // Call central sync function
       showNotification('notification_project_created', 'success', {name});
-      updateUndoButtonState();
-    }
-
-    function renderProjects() {
-      const list = document.getElementById('projectList'); const select = document.getElementById('taskProject');
-      if (!list || !select) return;
-      list.innerHTML = Object.values(projects).map(project => {
-          let priorityEmoji = '';
-          if (project.priority === "high") priorityEmoji = "🔴 ";
-          else if (project.priority === "medium") priorityEmoji = "🟡 ";
-          else if (project.priority === "low") priorityEmoji = "🟢 ";
-          return `
-        <div class="task-item" style="border-left: 4px solid ${project.color};">
-          <input type="checkbox" ${project.visible ? 'checked' : ''} onchange="toggleProjectVisibility('${project.id}')">
-          <span class="member-indicator" style="background-color: ${project.color};"></span> ${priorityEmoji}${project.name} (${translate('priority_' + project.priority)})
-          <button class="btn btn-sm btn-outline-primary me-2" onclick="openCustomLightbox('${project.id}')">✏️</button>
-          <button class="btn btn-sm btn-outline-danger" onclick="removeProject('${project.id}')">🗑️</button>
-        </div>`;
-      }).join('');
     }
 
     function toggleProjectVisibility(projectId) {
         saveStateToHistory();
         if (projects[projectId]) {
             projects[projectId].visible = !projects[projectId].visible;
-            renderProjects();
-            updateGantt();
+            syncAndRenderGantt(); // Call central sync function
         }
-        updateUndoButtonState();
     }
 
     function removeProject(projectId) {
@@ -1191,37 +1864,9 @@
 
             delete projects[projectId];
             
-            updateGantt();
+            syncAndRenderGantt(); // Call central sync function
 
             showNotification('notification_project_removed', 'success', {name: projectToRemove.name});
-            updateUndoButtonState();
-        }
-    }
-
-    function toggleNewTaskFieldsVisibility() {
-        const taskType = document.getElementById('taskType').value;
-        const normalFields = document.getElementById('normalTaskFields');
-        const summaryTaskNote = document.getElementById('summaryTaskNote');
-        if (taskType === 'task') {
-            normalFields.style.display = 'block';
-            summaryTaskNote.style.display = 'none';
-            populateProjectDropdown('taskProject', '', null, true, true); 
-            document.getElementById('taskStart').setAttribute('required', 'required');
-            document.getElementById('taskEnd').setAttribute('required', 'required');
-            document.getElementById('taskDuration').setAttribute('required', 'required');
-        } else {
-            normalFields.style.display = 'none';
-            summaryTaskNote.style.display = 'block';
-            populateProjectDropdown('taskProject', '', null, false, false); 
-            document.getElementById('taskStart').removeAttribute('required');
-            document.getElementById('taskEnd').removeAttribute('required');
-            document.getElementById('taskDuration').removeAttribute('required');
-            const taskProjectSelect = document.getElementById('taskProject');
-            if (taskProjectSelect.options.length > 0 && taskProjectSelect.value === "") {
-                if (taskProjectSelect.options.length > 0) {
-                     taskProjectSelect.selectedIndex = 0;
-                }
-            }
         }
     }
 
@@ -1235,15 +1880,20 @@
             return;
         }
         if (taskType === 'project') {
-            if (!parentIdFromSelect || parentIdFromSelect === "0") {
-                showNotification('validation_mother_task_parent_required', 'error');
-                return;
+            if (parentIdFromSelect === "0") { // Top-level project
+                // OK, it's a new top-level project
+            } else {
+                const selectedParent = findTaskInProjectsModel(parentIdFromSelect);
+                if (!selectedParent || selectedParent.type !== gantt.config.types.project) {
+                    showNotification('validation_mother_task_parent_required', 'error');
+                    return;
+                }
             }
         } else {
             parentIdFromSelect = parentIdFromSelect || "0";
         }
         let newTaskData = {
-            id: crypto.randomUUID(), name: taskName, text: taskName, comments: "",
+            id: crypto.randomUUID().toString(), name: taskName, text: taskName, comments: "", // Ensure ID is string
             color: "#5cb85c", type: taskType, parent: parentIdFromSelect, locked: false
         };
         if (taskType === 'task') {
@@ -1286,6 +1936,7 @@
             newTaskData.duration = 0;
             newTaskData.progress = 0;
             newTaskData.open = true;
+            newTaskData.tasks = [];
         }
         
         const parentData = findTaskInProjectsModel(parentIdFromSelect);
@@ -1294,6 +1945,8 @@
                 parentData.tasks = [];
             }
             parentData.tasks.push(newTaskData);
+        } else if (parentIdFromSelect === "0") {
+            projects[newTaskData.id] = newTaskData;
         }
 
         document.getElementById('taskProject').value = '';
@@ -1306,10 +1959,8 @@
         document.getElementById('taskPriority').value = 'project';
         document.getElementById('taskMembers').querySelectorAll('input:checked').forEach(input => input.checked = false);
         
-        updateGantt();
-        manualRecalculate(true);
+        syncAndRenderGantt(); // Call central sync function
         showNotification('notification_task_added', 'success', { name: taskName });
-        updateUndoButtonState();
     }
 
     function showTaskMembersLightbox(taskId) {
@@ -1324,7 +1975,7 @@
       const container = document.getElementById('editTaskMembersList');
       container.innerHTML = members.length === 0 ? translate('notification_no_members') : members.map(m => `
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" value="${m.id}" id="edit-task-member-${m.id}" name="edit-task-member-${m.id}" ${(taskData.memberIds || []).includes(m.id) ? 'checked' : ''}>
+          <input class="form-check-input" type="checkbox" value="${m.id}" id="edit-task-member-${m.id}" name="edit-task-member-${m.id}" ${(taskData.memberIds || []).includes(String(m.id)) ? 'checked' : ''}>
           <label class="form-check-label" for="edit-task-member-${m.id}">
             <span class="member-indicator" style="background-color: ${m.color};"></span> ${m.name}
           </label>
@@ -1340,16 +1991,11 @@
       if (!taskData) { return; }
       const assignedMemberIds = Array.from(document.getElementById('editTaskMembersList').querySelectorAll('input:checked')).map(input => input.value);
       taskData.memberIds = assignedMemberIds;
-      let currentParentId = taskData.parent;
-      while (currentParentId !== "0" && gantt.getTask(currentParentId)) {
-          recalculateProjectDatesAndProgress(currentParentId);
-          currentParentId = gantt.getTask(currentParentId).parent;
-      }
-      manualRecalculate(true);
+      // No need to manually recalculate parents here, syncAndRenderGantt will handle it.
       showNotification('notification_task_members_updated', 'success', {name: (taskData.name || '').replace(/^[?🟡🟢]\s*/, '')});
       const modalInstance = bootstrap.Modal.getInstance(document.getElementById('editTaskMembersModal'));
       if (modalInstance) modalInstance.hide();
-      updateUndoButtonState();
+      syncAndRenderGantt(); // Call central sync function
     }
 
     function exportToJSON() {
@@ -1370,72 +2016,131 @@
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
-                const data = JSON.parse(e.target.result);
-                if (!data.members || !data.projects || !data.allLinks) {
+                const rawData = JSON.parse(e.target.result);
+                console.log("[DEBUG] importFromJSON: Raw data loaded:", JSON.parse(JSON.stringify(rawData)));
+
+                if (!rawData.members || !rawData.projects || !rawData.allLinks) {
                     throw new Error(translate('notification_invalid_json_format'));
                 }
 
-                gantt.clearAll();
-                projects = {};
-                allLinks = [];
+                gantt.clearAll(); // Clear Gantt chart
                 
-                members = data.members || [];
-                
-                const idMap = new Map();
-                const tasksToProcess = [];
+                const idMap = new Map(); // Maps old IDs to new UUIDs
 
-                Object.values(data.projects).forEach(project => {
-                    tasksToProcess.push(project);
-                    const processChildren = (task) => {
-                        if (task.tasks) {
-                            task.tasks.forEach(child => {
-                                tasksToProcess.push(child);
-                                processChildren(child);
-                            });
-                        }
-                    };
-                    processChildren(project);
+                // 1. Generate new UUIDs for all members and map them
+                const remappedMembers = rawData.members.map(m => {
+                    const newId = crypto.randomUUID().toString();
+                    idMap.set(String(m.id), newId);
+                    console.log("[DEBUG] ID Mapped (Member):", m.id, "->", newId);
+                    return { ...m, id: newId };
                 });
 
-                tasksToProcess.forEach(task => {
-                    const oldId = task.id;
-                    const newId = crypto.randomUUID();
-                    idMap.set(oldId, newId);
-                    task.id = newId;
-                });
-
-                tasksToProcess.forEach(task => {
-                    if (task.parent && task.parent !== "0") {
-                        task.parent = idMap.get(task.parent) || "0";
+                // 2. Recursive function to process tasks and generate new IDs
+                const processTaskAndMapId = (originalTask) => {
+                    const oldId = String(originalTask.id);
+                    // Ensure a new ID is generated only if it hasn't been mapped already
+                    if (!idMap.has(oldId)) {
+                        idMap.set(oldId, crypto.randomUUID().toString());
+                        console.log("[DEBUG] ID Mapped (Task/Project):", oldId, "->", idMap.get(oldId));
                     }
-                });
+                    // Force visibility to true upon import for all tasks/projects
+                    const newTask = { 
+                        ...originalTask, 
+                        id: idMap.get(oldId),
+                        visible: true 
+                    };
+                    console.log("[DEBUG] Processing task (pre-parent/member update):", originalTask.name, "(Old ID:", originalTask.id, ", New ID:", newTask.id, ", Type:", originalTask.type, ", Original Parent:", originalTask.parent, ", Forced Visible:", newTask.visible, ")");
 
-                const sanitizedLinks = data.allLinks.map(link => {
-                    const newSource = idMap.get(link.source);
-                    const newTarget = idMap.get(link.target);
+                    // Recursively process children tasks
+                    if (originalTask.tasks) {
+                        console.log("[DEBUG] Recursively processing children for:", originalTask.name, "(Old ID:", originalTask.id, ")");
+                        newTask.tasks = originalTask.tasks.map(processTaskAndMapId);
+                    }
+                    return newTask;
+                };
+
+                // 3. Process all projects and their nested tasks to get new IDs
+                const processedProjects = {};
+                console.log("[DEBUG] Starting processing of top-level projects.");
+                Object.values(rawData.projects).forEach(originalProject => {
+                    const newProject = processTaskAndMapId(originalProject);
+                    processedProjects[newProject.id] = newProject;
+                });
+                console.log("[DEBUG] All projects processed for new IDs. Current processedProjects structure:", JSON.parse(JSON.stringify(processedProjects)));
+                console.log("[DEBUG] Current ID Map state:", JSON.parse(JSON.stringify(Array.from(idMap.entries()))));
+
+
+                // 4. Now, re-link parents and memberIds using the new IDs
+                const finalizeTask = (task) => {
+                    const oldParentId = task.parent; // Keep original parent for logging
+                    // Update parent ID
+                    if (task.parent && String(task.parent) !== "0") {
+                        const newParentId = idMap.get(String(task.parent));
+                        if (newParentId) {
+                            task.parent = newParentId;
+                            console.log("[DEBUG] Finalizing task:", task.name, "(ID:", task.id, ") - Parent updated from", oldParentId, "to", task.parent);
+                        } else {
+                            // If parent not found in map, it might be a top-level task that was previously nested
+                            // Or an error in the original data/mapping. Default to "0".
+                            task.parent = "0";
+                            console.warn("[WARN] Finalizing task:", task.name, "(ID:", task.id, ") - Original parent", oldParentId, "not found in ID map, setting parent to '0'.");
+                        }
+                    } else {
+                        task.parent = "0"; // Ensure top-level tasks have parent "0"
+                        console.log("[DEBUG] Finalizing task:", task.name, "(ID:", task.id, ") - Parent remains '0'.");
+                    }
+
+                    // Update member IDs
+                    if (task.memberIds) {
+                        task.memberIds = task.memberIds.map(oldMemberId => {
+                            const newMemberId = idMap.get(String(oldMemberId));
+                            if (!newMemberId) {
+                                console.warn("[WARN] Finalizing task:", task.name, "(ID:", task.id, ") - Member ID", oldMemberId, "not found in ID map.");
+                            }
+                            return newMemberId;
+                        }).filter(Boolean); // Filter out any null/undefined if member ID wasn't found
+                        console.log("[DEBUG] Finalizing task:", task.name, "(ID:", task.id, ") - Member IDs updated.");
+                    }
+
+                    // Recursively finalize children
+                    if (task.tasks) {
+                        console.log("[DEBUG] Finalizing children for:", task.name, "(ID:", task.id, ")");
+                        task.tasks.forEach(finalizeTask);
+                    }
+                };
+                
+                console.log("[DEBUG] Starting finalization of tasks (parent/member re-linking).");
+                Object.values(processedProjects).forEach(finalizeTask);
+                console.log("[DEBUG] All tasks finalized. Final processedProjects structure:", JSON.parse(JSON.stringify(processedProjects)));
+
+
+                // 5. Remap links using the new IDs
+                const remappedLinks = rawData.allLinks.map(link => {
+                    const newSource = idMap.get(String(link.source));
+                    const newTarget = idMap.get(String(link.target));
                     if (newSource && newTarget) {
+                        console.log("[DEBUG] Remapping link:", link.id, "Source:", link.source, "->", newSource, "Target:", link.target, "->", newTarget);
                         return {
-                            id: crypto.randomUUID(),
+                            id: crypto.randomUUID().toString(), // New ID for link itself
                             source: newSource,
                             target: newTarget,
-                            type: link.type
+                            type: String(link.type)
                         };
                     }
+                    console.warn("[WARN] Skipping link due to unmapped source or target:", link);
                     return null;
                 }).filter(Boolean);
 
-                allLinks = sanitizedLinks;
-                projects = data.projects;
-                currentLang = data.currentLang || 'fr';
+                // 6. Update global state
+                members = remappedMembers;
+                projects = processedProjects; // Use the processed projects with remapped IDs and correct parents
+                allLinks = remappedLinks;
+                currentLang = rawData.currentLang || 'fr';
 
                 setLanguage(currentLang);
-                renderMembers();
-                renderProjects();
-                updateTaskMembers();
-                updateGantt();
+                syncAndRenderGantt();
                 showNotification('notification_import_success');
                 document.getElementById('importJSON').value = '';
-                updateUndoButtonState();
 
             } catch (error) {
                 showNotification('notification_import_error', 'error', { message: error.message });
@@ -1472,7 +2177,6 @@
         document.getElementById('customLightboxTaskName').value = (ganttTask.text || '').replace(/^[🔴🟡🟢]\s*/, '');
         
         document.getElementById('customLightboxTaskType').value = ganttTask.type;
-        // Allow type change
         toggleCustomLightboxFieldsVisibility();
         
         populateProjectDropdown('customLightboxTaskParent', ganttTask.parent, id, true, true); 
@@ -1501,13 +2205,13 @@
             const membersContainer = document.getElementById('customLightboxTaskMembers');
             membersContainer.innerHTML = members.length === 0 ? translate('notification_no_members') : members.map(m => `
                 <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="${m.id}" id="custom-lightbox-member-${m.id}" name="custom-lightbox-member-${m.id}" ${(taskDataStore && taskDataStore.memberIds && taskDataStore.memberIds.includes(m.id)) ? 'checked' : ''}>
+                <input class="form-check-input" type="checkbox" value="${m.id}" id="custom-lightbox-member-${m.id}" name="custom-lightbox-member-${m.id}" ${(taskDataStore && taskDataStore.memberIds && taskDataStore.memberIds.includes(String(m.id))) ? 'checked' : ''}>
                 <label class="form-check-label" for="custom-lightbox-member-${m.id}">
                     <span class="member-indicator" style="background-color: ${m.color};"></span> ${m.name}
                 </label>
                 </div>`).join('');
         }
-        document.getElementById('customTaskModalLabel').textContent = translate('custom_lightbox_title') + (ganttTask.text ? `: ${(ganttTask.text || '').replace(/^[🔴�🟢]\s*/, '').trim().substring(0,30)}...` : '');
+        document.getElementById('customTaskModalLabel').textContent = translate('custom_lightbox_title') + (ganttTask.text ? `: ${(ganttTask.text || '').replace(/^[🔴🟢]\s*/, '').trim().substring(0,30)}...` : '');
         if (!customTaskModalInstance) {
             customTaskModalInstance = new bootstrap.Modal(document.getElementById('customTaskModal'));
         }
@@ -1528,38 +2232,59 @@
 
         const taskData = findTaskInProjectsModel(currentEditingTaskId);
         if (!taskData) {
-            console.error("Save failed: Task not found in data model:", currentEditingTaskId);
+            showNotification(`Save failed: Task not found in data model for ID: ${currentEditingTaskId}.`, 'error', {}, true);
             return;
         }
 
         const originalType = taskData.type;
         const newType = document.getElementById('customLightboxTaskType').value;
         const taskName = document.getElementById('customLightboxTaskName').value.trim();
-        let newParentId = document.getElementById('customLightboxTaskParent').value || "0";
+        let newParentIdFromLightbox = document.getElementById('customLightboxTaskParent').value || "0"; // Get the selected parent ID
         
         if (!taskName) {
             showNotification('notification_enter_name', 'error');
             return;
         }
         
-        // Update common properties
+        // Validate parent for 'project' type tasks
+        if (newType === 'project') {
+            if (newParentIdFromLightbox !== "0") { // If it's not becoming a top-level project
+                const selectedParent = findTaskInProjectsModel(newParentIdFromLightbox);
+                if (!selectedParent || selectedParent.type !== gantt.config.types.project) {
+                    showNotification('validation_mother_task_parent_required', 'error');
+                    return; // Prevent saving if parent is not a project/mother task
+                }
+            }
+        }
+
+        // Store original parent before any potential changes
+        const oldParentId = taskData.parent;
+        let finalNewParentId = newParentIdFromLightbox; // Assume the selected parent is the final one
+
+        // --- Update task properties based on type ---
         taskData.name = taskName;
         taskData.text = taskName;
         taskData.type = newType;
 
         if (originalType === 'task' && newType === 'project') {
-            // CONVERSION: Task -> Project
+            const ganttTask = gantt.getTask(currentEditingTaskId);
+            if (ganttTask && gantt.hasChild(ganttTask.id)) {
+                showNotification('Cannot convert a normal task with sub-tasks to a project. Please move or delete sub-tasks first.', 'error');
+                return;
+            }
+            // Transition from task to project
             taskData.start = null;
             taskData.end = null;
             taskData.duration = 0;
             taskData.progress = 0;
             taskData.open = true;
-            taskData.memberIds = []; 
+            taskData.memberIds = [];
             taskData.comments = "";
             taskData.color = document.getElementById('customLightboxProjectColor').value;
             taskData.priority = document.getElementById('customLightboxProjectPriority').value;
+            taskData.tasks = taskData.tasks || []; // Ensure tasks array exists for a project
         } else if (newType === 'project') {
-            // EDITING a Project
+            // It's a project, update project specific fields
             taskData.description = document.getElementById('customLightboxProjectDescription').value;
             const startPicker = datePickers.find(p => p.element.id === 'customLightboxProjectStart');
             const endPicker = datePickers.find(p => p.element.id === 'customLightboxProjectEnd');
@@ -1576,8 +2301,16 @@
             }
             taskData.color = document.getElementById('customLightboxProjectColor').value;
             taskData.priority = document.getElementById('customLightboxProjectPriority').value;
-        } else { 
-            // EDITING a Task
+        } else {
+            // Transition from project to task or just updating a normal task
+            if (originalType === 'project' && newType === 'task') {
+                const ganttTask = gantt.getTask(currentEditingTaskId);
+                if (ganttTask && gantt.hasChild(ganttTask.id)) {
+                    showNotification('Cannot convert a project with sub-tasks to a normal task. Please move or delete sub-tasks first.', 'error');
+                    return;
+                }
+                delete taskData.tasks; // A normal task cannot have sub-tasks
+            }
             taskData.progress = parseFloat(document.getElementById('customLightboxTaskProgress').value);
             taskData.priority = document.getElementById('customLightboxTaskPriority').value;
             taskData.comments = document.getElementById('customLightboxTaskComments').value;
@@ -1601,49 +2334,63 @@
             taskData.duration = finalDuration;
         }
         
-        // Handle reparenting in the data model
-        if (taskData.parent !== newParentId) {
-            const oldParentData = findTaskInProjectsModel(taskData.parent);
+        // --- Handle parent change in the model ---
+        if (oldParentId !== finalNewParentId) {
+            // Remove from old parent
+            const oldParentData = findTaskInProjectsModel(oldParentId);
             if (oldParentData && oldParentData.tasks) {
                 const index = oldParentData.tasks.findIndex(t => t.id === currentEditingTaskId);
                 if (index > -1) {
                     oldParentData.tasks.splice(index, 1);
                 }
+            } else if (oldParentId === "0") { // Was a top-level project/task
+                delete projects[currentEditingTaskId];
             }
-            const newParentData = findTaskInProjectsModel(newParentId);
+
+            // Add to new parent
+            let newParentData = null;
+            if (finalNewParentId !== "0") {
+                newParentData = findTaskInProjectsModel(finalNewParentId);
+            }
+
             if (newParentData) {
                 if (!newParentData.tasks) {
                     newParentData.tasks = [];
                 }
                 newParentData.tasks.push(taskData);
-            } else if (newParentId == 0) {
-                 projects[taskData.id] = taskData;
+                taskData.parent = finalNewParentId; // Update parent ID in taskData
+            } else if (finalNewParentId === "0") { // New parent is root (0)
+                 projects[currentEditingTaskId] = taskData;
+                 taskData.parent = "0"; // Update parent ID in taskData
+            } else {
+                // CRITICAL: New parent not found and it's not root. Task would disappear.
+                // Force to top-level to prevent loss.
+                showNotification(`⚠️ Impossible de trouver le nouveau parent. La tâche '${taskName}' a été déplacée à la racine.`, 'warning', {}, true);
+                
+                projects[currentEditingTaskId] = taskData; // Place it at the root
+                taskData.parent = "0"; // Ensure its parent is updated to "0" in the model
             }
-            taskData.parent = newParentId;
         }
 
-        updateGantt();
-        
         showNotification('notification_task_updated', 'success', {name: taskName});
         closeCustomLightbox();
-        updateUndoButtonState();
+        
+        syncAndRenderGantt(); // Call central sync function after all model changes
     }
 
     function deleteTaskFromCustomLightbox() {
-        saveStateToHistory();
         if (!currentEditingTaskId) return;
-        const taskToDelete = gantt.getTask(currentEditingTaskId);
-        const taskName = taskToDelete ? taskToDelete.text : '';
-        const parentOfTaskToDelete = taskToDelete ? taskToDelete.parent : "0";
-        gantt.deleteTask(currentEditingTaskId);
-        rebuildProjectsFromGanttData(); 
-        if (parentOfTaskToDelete !== "0") {
-            recalculateProjectDatesAndProgress(parentOfTaskToDelete);
+        const taskToDelete = findTaskInProjectsModel(currentEditingTaskId);
+        if (!taskToDelete) return;
+        
+        const confirmMessage = taskToDelete.type === 'project' ? 
+            translate('clear_all_data_confirm_project', {name: taskToDelete.name}) :
+            translate('clear_all_data_confirm_task', {name: taskToDelete.name});
+
+        if (confirm(confirmMessage)) {
+            gantt.deleteTask(currentEditingTaskId); // This will trigger onAfterTaskDelete
+            closeCustomLightbox();
         }
-        updateGantt();
-        showNotification('notification_task_deleted', 'success', {name: (taskName || '').replace(/^[🔴�🟢]\s*/, '').trim()});
-        closeCustomLightbox();
-        updateUndoButtonState();
     }
 
     function updateLightboxSchedule(source) {
@@ -1679,314 +2426,23 @@
         }
     }
 
-    function getGanttColumns() {
-        return [
-            {
-                name: "text", label: translate('gantt_col_task'), width: '*', tree: true, resize: true,
-                template: function(task) {
-                    const taskText = (task.text || '').replace(/^[�🟡🟢]\s*/, ''); 
-                    if (task.type === gantt.config.types.milestone) {
-                        return taskText;
-                    }
-                    if (task.type === gantt.config.types.project) {
-                        const projectData = findTaskInProjectsModel(task.id);
-                        if (projectData && typeof projectData.progress === 'number') {
-                             return `${taskText} (${Math.round(projectData.progress * 100)}%)`;
-                        }
-                        return `${taskText} (${Math.round(task.progress * 100)}%)`;
-                    }
-                    let taskName = taskText;
-                    let memberDots = "";
-                    let progressDisplay = "";
-                    let taskDataInStore = findTaskInProjectsModel(task.id);
-                    if (taskDataInStore) {
-                        const memberIds = taskDataInStore.memberIds || [];
-                        const visibleMembers = memberIds.map(id => members.find(m => String(m.id) === String(id))).filter(member => member && member.visible);
-                        if (visibleMembers.length > 0) {
-                            memberDots = visibleMembers.map(member => `<span class="member-indicator" style="background-color:${member.color}; vertical-align: middle;" title="${(member.name || '')}"></span>`).join("");
-                        }
-                        progressDisplay = ` (${Math.round(taskDataInStore.progress * 100)}%)`;
-                    } else {
-                       progressDisplay = ` (${Math.round(task.progress * 100)}%)`;
-                    }
-                    return `${taskName} ${memberDots} ${progressDisplay}`;
-                }
-            },
-            {
-                name: "lock", label: "✔", width: 40, align: "center",
-                template: function(task) {
-                    // Affiche une case cochée pour les tâches non verrouillées et une case décochée pour les tâches verrouillées.
-                    return `<div class="gantt_grid_cell_lock" onclick="toggleTaskLock('${task.id}')">${task.locked ? '☐' : '✅'}</div>`;
-                }
-            }
-        ];
-    }
-
-    function weekendCss(date) {
-      return (date.getDay() === 0 || date.getDay() === 6) ? "weekend" : "";
-    }
-
-    function initGantt() {
-      gantt.plugins({ 
-          export_api: true, 
-          zoom: true, 
-          tooltip: true
-      });
-      gantt.config.work_time = true;
-      gantt.config.skip_off_time = true;
-      gantt.config.auto_scheduling = true;
-      gantt.config.auto_scheduling_strict = true;
-      gantt.config.auto_scheduling_initial = true;
-      gantt.config.date_format = "%Y-%m-%d";
-      gantt.config.grid_resize = true;
-      gantt.config.drag_progress = true;
-      gantt.config.tooltip_timeout = 30;
-      gantt.config.show_grid = isGridVisible;
-      gantt.config.order_branch = true;
-      gantt.config.order_branch_free = true;
-      gantt.config.auto_types = true; // Automatically convert tasks to projects
-      gantt.config.drag_project = false;
-      gantt.setWorkTime({ day: 0, hours: false });
-      gantt.setWorkTime({ day: 6, hours: false });
-      gantt.templates.date_grid = function(date){
-          let format;
-          switch(currentLang) {
-              case 'fr': case 'es': case 'it': 
-                  format = "%d/%m/%Y"; 
-                  break;
-              case 'de': 
-                  format = "%d.%m.%Y"; 
-                  break;
-              default: 
-                  format = "%Y-%m-%d";
-          }
-          return gantt.date.date_to_str(format)(date);
-      };
-      gantt.config.columns = getGanttColumns();
-      gantt.init("gantt_here");
-      
-      gantt.attachEvent("onAfterTaskDrag", function(id, mode, e){
-        // After drag, the parent might have been changed and its type updated automatically by gantt
-        // We need to sync our internal data model with the gantt's state
-        saveStateToHistory();
-        rebuildProjectsFromGanttData();
-        updateGantt();
-        updateUndoButtonState();
-      });
-
-      gantt.attachEvent("onBeforeRowDragEnd", function(id, parent, tindex) {
-          if (parent == 0) return true;
-          if (!gantt.isTaskExists(parent)) return false;
-          const newParentTask = gantt.getTask(parent);
-          if (newParentTask.type === 'task') {
-              showNotification("Une tâche ne peut pas contenir d'autres tâches.", "error");
-              return false;
-          }
-          return true;
-      });
-      gantt.attachEvent("onAfterTaskUpdate", function(id, task){
-          if(isUpdatingGanttProgrammatically) return;
-          saveStateToHistory();
-          rebuildProjectsFromGanttData();
-          updateGantt();
-          updateUndoButtonState();
-      });
-      applyZoom(currentZoomLevelIndex);
-      
-      gantt.templates.task_text = function(start, end, task){
-          const taskText = (task.text || '').replace(/^[🔴🟡🟢]\s*/, '');
-          if (task.type === gantt.config.types.milestone) {
-              return taskText;
-          }
-          if (task.type === gantt.config.types.project) {
-              const projectData = findTaskInProjectsModel(task.id);
-              if (projectData && typeof projectData.progress === 'number') {
-                  return `${taskText} (${Math.round(projectData.progress * 100)}%)`;
-              }
-              return `${taskText} (${Math.round(task.progress * 100)}%)`;
-          }
-          let taskName = taskText;
-          let memberDots = "";
-          let progressDisplay = "";
-          let taskDataInStore = findTaskInProjectsModel(task.id);
-          if (taskDataInStore) {
-              const memberIds = taskDataInStore.memberIds || [];
-              const visibleMembers = memberIds.map(id => members.find(m => String(m.id) === String(id))).filter(member => member && member.visible);
-              if (visibleMembers.length > 0) {
-                  memberDots = visibleMembers.map(member => `<span class="member-indicator" style="background-color:${member.color}; vertical-align: middle;" title="${(member.name || '')}"></span>`).join("");
-              }
-              progressDisplay = ` (${Math.round(taskDataInStore.progress * 100)}%)`;
-          } else {
-             progressDisplay = ` (${Math.round(task.progress * 100)}%)`;
-          }
-          return `${taskName} ${memberDots} ${progressDisplay}`;
-      };
-      gantt.templates.grid_row_class = function(start, end, task) {
-          let rowClass = "";
-          let taskDataInStore = findTaskInProjectsModel(task.id);
-          if (taskDataInStore) {
-              let effectivePriority = taskDataInStore.priority || 'low';
-              if (effectivePriority === 'project' && String(task.parent) !== "0") {
-                  let currentParentId = String(task.parent);
-                  while (currentParentId && currentParentId !== "0") {
-                      const parentGanttTask = gantt.getTask(currentParentId);
-                      if (!parentGanttTask) break;
-                      if (parentGanttTask.type === gantt.config.types.project) {
-                          const parentData = findTaskInProjectsModel(parentGanttTask.id);
-                          if (parentData && parentData.priority && parentData.priority !== 'project') {
-                              effectivePriority = parentData.priority;
-                              break;
-                          }
-                      }
-                      currentParentId = parentGanttTask.parent;
-                  }
-              }
-              rowClass += ` priority-${effectivePriority}`;
-          } else if (task.type === gantt.config.types.project && String(task.parent) === "0") {
-              const projectData = projects[String(task.id)];
-              if (projectData) rowClass += ` priority-${projectData.priority}`;
-          }
-
-          if (highlightedInfo.taskIds.includes(task.id)) {
-              rowClass += " " + highlightedInfo.level;
-          }
-
-          return rowClass.trim();
-      };
-      gantt.templates.task_class = function(start, end, task){
-        let task_class = "";
-        if (task.readonly) {
-            task_class += " task-locked";
-        }
-        if (highlightedInfo.taskIds.includes(task.id)) {
-            task_class += " " + highlightedInfo.level;
-        }
-        let taskDataInStore = findTaskInProjectsModel(task.id);
-        if(taskDataInStore && taskDataInStore.type === gantt.config.types.project){
-            task_class += ` project-priority-${taskDataInStore.priority}`;
-        }
-        return task_class.trim();
-      };
-      gantt.templates.timeline_cell_class = function(item, date) {
-        if (date.getDay() === 0 || date.getDay() === 6) {
-            return "weekend";
-        }
-        return "";
-      };
-      gantt.templates.tooltip_text = function(start, end, task){
-        const taskText = (task.text || '').replace(/^[�🟡🟢]\s*/, '').replace(/\s+\(.*?\)$/, '').trim(); 
-        let html = `<b>${taskText}</b><br/>`;
-        html += `<b>${translate('gantt_col_start_date')}:</b> ${gantt.templates.date_grid(start)}<br/>`;
-        
-        if (task.type !== gantt.config.types.milestone) {
-            html += `<b>${translate('gantt_col_end_date')}:</b> ${gantt.templates.date_grid(gantt.calculateEndDate(task))}<br/>`;
-            html += `<b>${translate('gantt_col_duration')}:</b> ${task.duration} ${translate('gantt_col_duration').includes('(j)') ? 'j' : 'd'}<br/>`;
-            html += `<b>${translate('gantt_col_progress')}:</b> ${Math.round(task.progress * 100)}%<br/>`;
-        }
-        
-        let taskDataInStore = findTaskInProjectsModel(task.id);
-        if (taskDataInStore && taskDataInStore.type !== gantt.config.types.project) {
-            const memberIds = taskDataInStore.memberIds || [];
-            if (memberIds.length > 0) {
-                const memberNames = memberIds.map(id => {
-                    const member = members.find(m => String(m.id) === String(id));
-                    return member ? (member.name || '') : '';
-                }).filter(name => name).join(", ");
-                if (memberNames) html += `<b>${translate('gantt_col_members')}:</b> ${memberNames}<br/>`;
-            }
-            if (taskDataInStore.comments) {
-                html += `<b>${translate('custom_lightbox_task_comments_label')}:</b> ${taskDataInStore.comments.substring(0, 100)}...<br/>`;
-            }
-        }
-        return html;
-      };
-      gantt.attachEvent("onBeforeTaskDisplay", function(id, task) {
-        let baseColor = "#007bff";
-        let taskDataInStore = findTaskInProjectsModel(id);
-        if (taskDataInStore) {
-            baseColor = taskDataInStore.color || "#007bff";
-        } else {
-            baseColor = task.color || "#5cb85c";
-        }
-        if (typeof baseColor !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(baseColor)) {
-            baseColor = "#007bff";
-        }
-        task.color = baseColor;
-        task.style = `border-color: ${adjustColor(baseColor, -10)};`;
-        task.progressColor = task.progress >= 1 ? "#28A745" : adjustColor(baseColor, 20);
-        task.textColor = getContrastColor(baseColor);
-        return true;
-      });
-      gantt.attachEvent("onBeforeLightbox", function(id){
-        openCustomLightbox(id);
-        return false;
-      });
-      gantt.attachEvent("onAfterLinkAdd", function(id, link) {
-        saveStateToHistory();
-        const newLink = { id: crypto.randomUUID(), source: String(link.source), target: String(link.target), type: String(link.type) };
-        allLinks.push(newLink);
-        gantt.changeLinkId(id, newLink.id);
-        showNotification("notification_link_added");
-        updateUndoButtonState();
-        return true;
-      });
-      gantt.attachEvent("onAfterLinkDelete", function(id, link) {
-        saveStateToHistory();
-        allLinks = allLinks.filter(l => String(l.id) !== String(id));
-        showNotification("notification_link_removed");
-        updateUndoButtonState();
-        return true;
-      });
-      gantt.attachEvent("onAfterTaskDelete", function(id, task) {
-        saveStateToHistory();
-        rebuildProjectsFromGanttData(); 
-        if (String(task.parent) !== "0") {
-            recalculateProjectDatesAndProgress(String(task.parent));
-        }
-        updateGantt();
-        showNotification('notification_task_deleted', 'success', {name: (task.text || '').replace(/^[🔴🟡🟢]\s*/, '').trim()});
-        updateUndoButtonState();
-        return true;
-      });
-      gantt.attachEvent("onBeforeTaskDrag", function(id, mode, task){
-        return !task.readonly;
-      });
-      gantt.attachEvent("onBeforeTaskResize", function(id, mode, task){
-        return !task.readonly;
-      });
-      gantt.attachEvent("onBeforeTaskAutoSchedule", function(task, start, link, predecessor){
-        return !task.readonly;
-      });
-      gantt.attachEvent("onBeforeTaskDisplay", function(id, task) {
-          const taskData = findTaskInProjectsModel(id);
-          if (task.type === 'task' && taskData && taskData.memberIds) {
-              const visibleMembers = members.filter(m => m.visible).map(m => m.id);
-              const isVisible = taskData.memberIds.some(memberId => visibleMembers.includes(memberId));
-              return isVisible;
-          }
-          return true;
-      });
-      applyTranslations();
-    }
-
     function calculateMemberWorkload() {
         memberWorkload = {};
         const dateToStr = gantt.date.date_to_str("%Y-%m-%d");
-
         gantt.eachTask(function(task) {
-            if (task.type === gantt.config.types.task && gantt.isTaskVisible(task.id) && task.memberIds && task.memberIds.length > 0) {
-                for (let d = new Date(task.start_date); d < task.end_date; d.setDate(d.getDate() + 1)) {
-                    if (gantt.isWorkTime({ date: d, unit: "day" })) {
-                        const dateStr = dateToStr(d);
-                        if (!memberWorkload[dateStr]) {
-                            memberWorkload[dateStr] = {};
+            // Only consider tasks that are currently visible in the Gantt chart for workload calculation
+            if (gantt.isTaskVisible(task.id) && task.type === gantt.config.types.task) {
+                const taskData = findTaskInProjectsModel(task.id);
+                if (taskData && taskData.memberIds && taskData.memberIds.length > 0) {
+                    for (let d = new Date(task.start_date); d < task.end_date; d.setDate(d.getDate() + 1)) {
+                        if (gantt.isWorkTime({ date: d, unit: "day" })) {
+                            const dateStr = dateToStr(d);
+                            taskData.memberIds.forEach(memberId => {
+                                if (!memberWorkload[dateStr]) memberWorkload[dateStr] = {};
+                                if (!memberWorkload[dateStr][memberId]) memberWorkload[dateStr][memberId] = 0;
+                                memberWorkload[dateStr][memberId]++;
+                            });
                         }
-                        task.memberIds.forEach(memberId => {
-                            if (!memberWorkload[dateStr][memberId]) {
-                                memberWorkload[dateStr][memberId] = 0;
-                            }
-                            memberWorkload[dateStr][memberId]++;
-                        });
                     }
                 }
             }
@@ -1996,382 +2452,27 @@
     function getMemberOverload(memberId) {
         const overloadedDays = [];
         const dateToLocaleStr = gantt.date.date_to_str(getGanttDateFormatForLocale(currentLang));
-
         for (const date in memberWorkload) {
-            if (memberWorkload[date][memberId]) {
-                const load = memberWorkload[date][memberId];
-                if (load >= 3) {
-                    const formattedDate = dateToLocaleStr(gantt.date.str_to_date("%Y-%m-%d")(date));
-                    const icon = load >= 4 ? '💀' : '⚠️';
-                    overloadedDays.push({ date: formattedDate, icon: icon, rawDate: date });
-                }
+            if (memberWorkload[date][memberId] && memberWorkload[date][memberId] >= 3) {
+                const formattedDate = dateToLocaleStr(gantt.date.str_to_date("%Y-%m-%d")(date));
+                const icon = memberWorkload[date][memberWorkload[date][memberId]] >= 4 ? '💀' : '⚠️';
+                overloadedDays.push({ date: formattedDate, icon: icon, rawDate: date });
             }
         }
         return overloadedDays;
     }
 
-	function updateGantt() {
-		if (!gantt || !gantt.$container) { return; }
-		memorizeCollapseState(); 
-		isUpdatingGanttProgrammatically = true;
-		gantt.clearAll();
-		const ganttDataTasks = [];
-		const ganttDataLinks = [];
-		function flattenTasks(tasks, parentId) {
-			tasks.forEach(item => {
-				const ganttTask = {
-					id: item.id, text: item.name,
-					start_date: item.start ? gantt.date.str_to_date(gantt.config.date_format)(item.start) : null,
-					end_date: item.end ? gantt.date.str_to_date(gantt.config.date_format)(item.end) : null,
-					duration: item.duration, progress: item.progress, parent: item.parent || parentId,
-					type: item.type, color: item.color, open: item.open || (item.type === gantt.config.types.project),
-                    locked: item.locked || false, readonly: item.locked || false
-				};
-				ganttTask.memberIds = item.memberIds || [];
-				ganttTask.priority = item.priority || (item.type === gantt.config.types.project ? 'low' : 'project');
-				ganttTask.comments = item.comments || "";
-				ganttTask.project = item.project || "";
-				ganttDataTasks.push(ganttTask);
-				if (item.tasks && item.tasks.length > 0) {
-					flattenTasks(item.tasks, item.id);
-				}
-			});
-		}
-		Object.values(projects).forEach(project => {
-            if (!project.visible) return;
-			ganttDataTasks.push({
-				id: project.id, text: project.name,
-				start_date: (project.start && (new Date(project.start) instanceof Date) && !isNaN(new Date(project.start))) ? gantt.date.str_to_date(gantt.config.date_format)(project.start) : null,
-				end_date: (project.end && (new Date(project.end) instanceof Date) && !isNaN(new Date(project.end))) ? gantt.date.str_to_date(gantt.config.date_format)(project.end) : null,
-				duration: project.duration, progress: project.progress, parent: project.parent,
-				type: project.type, color: project.color, open: project.open || true,
-				memberIds: project.memberIds || [], priority: project.priority, comments: project.comments || "", project: project.name,
-                locked: project.locked || false, readonly: project.locked || false
-			});
-			if (project.tasks && project.tasks.length > 0) {
-				flattenTasks(project.tasks, project.id);
-			}
-		});
-		allLinks.forEach(link => {
-			ganttDataLinks.push({ id: link.id, source: link.source, target: link.target, type: link.type });
-		});
-
-        calculateMemberWorkload();
-
-		gantt.parse({ data: ganttDataTasks, links: ganttDataLinks });
-		restoreCollapseState(); 
-		gantt.eachTask(function(task) {
-			if (task.type === gantt.config.types.project) {
-				recalculateProjectDatesAndProgress(task.id);
-			}
-		});
-		gantt.render();
-		renderSidebars();
-		isUpdatingGanttProgrammatically = false;
-	}
-
-    function recalculateProjectDatesAndProgress(taskId) {
-        const ganttTask = gantt.getTask(taskId);
-        if (!ganttTask || ganttTask.type !== gantt.config.types.project) { return; }
-
-        const taskDataStore = findTaskInProjectsModel(taskId);
-        const childTasksInGantt = gantt.getChildren(taskId).map(id => gantt.getTask(id)).filter(Boolean);
-
-        let minStartDate = null;
-        let maxEndDate = null;
-        let totalProgressSum = 0;
-        let totalChildDuration = 0;
-
-        childTasksInGantt.forEach(childGanttTask => {
-            if (childGanttTask.start_date instanceof Date && !isNaN(childGanttTask.start_date.getTime())) {
-                if (!minStartDate || childGanttTask.start_date < minStartDate) {
-                    minStartDate = childGanttTask.start_date;
-                }
-                const childEndDate = gantt.calculateEndDate({ start_date: childGanttTask.start_date, duration: childGanttTask.duration });
-                if (childEndDate instanceof Date && !isNaN(childEndDate.getTime())) {
-                    if (!maxEndDate || childEndDate > maxEndDate) {
-                        maxEndDate = childEndDate;
-                    }
-                }
-            }
-            if (childGanttTask.duration > 0) {
-                totalProgressSum += (parseFloat(childGanttTask.progress) || 0) * childGanttTask.duration;
-                totalChildDuration += childGanttTask.duration;
-            }
-        });
-
-        let newStartDate = null;
-        let newEndDate = null;
-        let newDuration = 0;
-        let newProgress = 0;
-
-        if (minStartDate && maxEndDate) {
-            newStartDate = minStartDate;
-            newEndDate = maxEndDate;
-            newDuration = gantt.calculateDuration({ start_date: minStartDate, end_date: maxEndDate });
-        } else {
-            if (ganttTask.start_date instanceof Date && !isNaN(ganttTask.start_date.getTime())) {
-                newStartDate = ganttTask.start_date;
-                newDuration = ganttTask.duration || 1; 
-                newEndDate = gantt.calculateEndDate({ start_date: newStartDate, duration: newDuration });
-            } else {
-                newStartDate = new Date(); 
-                newDuration = 1; 
-                newEndDate = gantt.calculateEndDate({ start_date: newStartDate, duration: newDuration });
-            }
-        }
-        
-        newProgress = totalChildDuration > 0 ? (totalProgressSum / totalChildDuration) : 0;
-
-        ganttTask.start_date = newStartDate;
-        ganttTask.end_date = newEndDate;
-        ganttTask.duration = newDuration;
-        ganttTask.progress = newProgress;
-
-        if (taskDataStore) {
-            taskDataStore.start = newStartDate ? gantt.date.date_to_str(gantt.config.date_format)(newStartDate) : null;
-            taskDataStore.end = newEndDate ? gantt.date.date_to_str(gantt.config.date_format)(newEndDate) : null;
-            taskDataStore.duration = Number(newDuration);
-            taskDataStore.progress = Number(newProgress);
-        }
-    }
-
-    function findTaskInProjectsModel(taskId) {
-        const targetId = String(taskId);
-        for (const projectId in projects) {
-            if (String(projects[projectId].id) === targetId) {
-                return projects[projectId];
-            }
-            const searchNested = (tasks) => {
-                for (let i = 0; i < tasks.length; i++) {
-                    const task = tasks[i];
-                    if (String(task.id) === targetId) {
-                        return task;
-                    }
-                    if (task.type === gantt.config.types.project && task.tasks && task.tasks.length > 0) {
-                        const foundInNested = searchNested(task.tasks);
-                        if (foundInNested) return foundInNested;
-                    }
-                }
-                return null;
-            };
-            const foundInProjectTasks = searchNested(projects[projectId].tasks || []);
-            if (foundInProjectTasks) {
-                return foundInProjectTasks;
-            }
-        }
-        return null;
-    }
-
-    function renderSidebars() {
-      renderMembers();
-      renderProjects();
-      updateTaskMembers();
-      toggleNewTaskFieldsVisibility();
-    }
-
-    function populateProjectDropdown(selectElementId, selectedParentId = '', currentEditingId = null, includeAllSummaryTasks = false, allowNoParent = true) {
-        const parentSelect = document.getElementById(selectElementId);
-        if (!parentSelect) return;
-        parentSelect.innerHTML = '';
-        if (allowNoParent) {
-            const noParentOption = document.createElement('option');
-            noParentOption.value = "";
-            noParentOption.textContent = translate('no_parent');
-            parentSelect.appendChild(noParentOption);
-        }
-        if (includeAllSummaryTasks) {
-            gantt.eachTask((task) => {
-                const isSelectableParent = task.type === gantt.config.types.project && String(task.id) !== String(currentEditingId);
-                if (isSelectableParent) {
-                    const option = document.createElement('option');
-                    option.value = task.id;
-                    option.textContent = (task.text || '').replace(/^[🔴🟡🟢]\s*/, '').replace(/\s+\(.*?\)$/, '').trim();
-                    if (String(task.id) === String(selectedParentId)) {
-                        option.selected = true;
-                    }
-                    parentSelect.appendChild(option);
-                }
-            });
-        } else {
-            Object.values(projects).forEach(project => {
-                if (String(project.id) !== String(currentEditingId) && String(project.parent) === "0") {
-                    const option = document.createElement('option');
-                    option.value = project.id;
-                    option.textContent = (project.name || '').replace(/^[�🟡�]\s*/, '').replace(/\s+\(.*?\)$/, '').trim();
-                    if (String(project.id) === String(selectedParentId)) {
-                        option.selected = true;
-                    }
-                    parentSelect.appendChild(option);
-                }
-            });
-        }
-    }
-
-    function rebuildProjectsFromGanttData() {
-        if (!gantt || !gantt.eachTask) { return; }
-        const newProjects = {};
-        const ganttTasksById = new Map();
-        gantt.eachTask(task => {
-            ganttTasksById.set(String(task.id), task);
-        });
-        const oldPropertiesById = new Map();
-        function collectOldProperties(items) {
-            items.forEach(item => {
-                oldPropertiesById.set(String(item.id), item);
-                if (item.tasks && Array.isArray(item.tasks)) {
-                    collectOldProperties(item.tasks);
-                }
-            });
-        }
-        Object.values(projects).forEach(proj => {
-            oldPropertiesById.set(String(proj.id), proj);
-            collectOldProperties(proj.tasks || []);
-        });
-        function buildHierarchyFromGantt(parentId) {
-            const childrenInGantt = gantt.getChildren(parentId);
-            const nestedItems = [];
-            childrenInGantt.forEach(childId => {
-                const ganttTask = ganttTasksById.get(String(childId));
-                if (!ganttTask) return;
-                const oldProps = oldPropertiesById.get(String(ganttTask.id)) || {};
-                const startDate = (ganttTask.start_date instanceof Date && !isNaN(ganttTask.start_date.getTime())) 
-                                  ? gantt.date.date_to_str(gantt.config.date_format)(ganttTask.start_date) : null;
-                const endDate = (ganttTask.end_date instanceof Date && !isNaN(ganttTask.end_date.getTime()))
-                                ? gantt.date.date_to_str(gantt.config.date_format)(ganttTask.end_date) : null;
-                const itemData = {
-                    id: String(ganttTask.id),
-                    name: (ganttTask.text || '').replace(/^[🔴🟡🟢]\s*/, '').replace(/\s+\(.*?\)$/, '').trim(),
-                    start: startDate, end: endDate, duration: ganttTask.duration || 0,
-                    progress: ganttTask.progress || 0, parent: String(ganttTask.parent), 
-                    type: ganttTask.type, // Always take the type from the gantt instance
-                    color: ganttTask.color || oldProps.color || "#5cb85c",
-                    memberIds: ganttTask.hasOwnProperty('memberIds') ? ganttTask.memberIds : (oldProps.memberIds || []),
-                    priority: ganttTask.priority || oldProps.priority || (ganttTask.type === gantt.config.types.project ? 'low' : 'project'),
-                    comments: ganttTask.comments || oldProps.comments || "",
-                    project: (ganttTask.parent === "0" && ganttTask.type === gantt.config.types.project) ? itemData.name : oldProps.project || "",
-                    locked: ganttTask.locked || oldProps.locked || false
-                };
-                if (itemData.type === gantt.config.types.project) {
-                    itemData.tasks = buildHierarchyFromGantt(ganttTask.id);
-                    if (String(ganttTask.parent) === "0") {
-                        itemData.description = oldProps.description || "";
-                        itemData.deadline = oldProps.deadline || "";
-                        itemData.visible = (typeof oldProps.visible !== 'undefined') ? oldProps.visible : true;
-                    }
-                }
-                nestedItems.push(itemData);
-            });
-            return nestedItems;
-        }
-        gantt.eachTask(function(ganttTask) {
-            if (String(ganttTask.parent) === "0" && ganttTask.type === gantt.config.types.project) {
-                const projectId = String(ganttTask.id);
-                const oldProps = oldPropertiesById.get(projectId) || {};
-                const projectStartDate = (ganttTask.start_date instanceof Date && !isNaN(ganttTask.start_date.getTime()))
-                                       ? gantt.date.date_to_str(gantt.config.date_format)(ganttTask.start_date) : null;
-                const projectEndDate = (ganttTask.end_date instanceof Date && !isNaN(ganttTask.end_date.getTime()))
-                                     ? gantt.date.date_to_str(gantt.config.date_format)(ganttTask.end_date) : null;
-                newProjects[projectId] = {
-                    id: projectId, name: (ganttTask.text || '').replace(/^[🔴🟡🟢]\s*/, '').replace(/\s+\(.*?\)$/, '').trim(),
-                    description: oldProps.description || "", deadline: oldProps.deadline || "",
-                    priority: oldProps.priority || "medium", color: oldProps.color || "#8E44AD",
-                    visible: (typeof oldProps.visible !== 'undefined') ? oldProps.visible : true,
-                    start: projectStartDate, end: projectEndDate, duration: ganttTask.duration || 0,
-                    progress: ganttTask.progress || 0, type: gantt.config.types.project, parent: "0",
-                    tasks: buildHierarchyFromGantt(ganttTask.id),
-                    locked: ganttTask.locked || oldProps.locked || false
-                };
-            }
-        });
-        projects = newProjects;
-    }
-
-    function calculateSummaryProgress(tasks) {
-      if (!tasks || tasks.length === 0) return 0;
-      const totalProgress = tasks.reduce((sum, task) => sum + (parseFloat(task.progress) || 0), 0);
-      return totalProgress / tasks.length;
-    }
-
-    function manualRecalculate(isInternalCall = false) {
-        if (!isInternalCall) saveStateToHistory();
-        try {
-            gantt.batchUpdate(() => {
-                let changed = true;
-                let iterations = 0;
-                const maxIterations = gantt.getTaskCount() + 5;
-                while (changed && iterations < maxIterations) {
-                    changed = false;
-                    iterations++;
-                    gantt.eachTask(function(task) {
-                        if(task.readonly) return; // Ne pas recalculer les tâches verrouillées
-                        const predecessors = gantt.getLinks().filter(l => String(l.target) === String(task.id));
-                        if (predecessors.length > 0) {
-                            let maxEndDate = null;
-                            predecessors.forEach(link => {
-                                const predecessorTask = gantt.getTask(link.source);
-                                if (predecessorTask) {
-                                    const predecessorEndDate = gantt.calculateEndDate(predecessorTask);
-                                    if (!maxEndDate || predecessorEndDate > maxEndDate) {
-                                        maxEndDate = predecessorEndDate;
-                                    }
-                                }
-                            });
-                            if (maxEndDate) {
-                                let newStartDate = gantt.getClosestWorkTime({ date: maxEndDate, dir: "future" });
-                                if (task.start_date.getTime() !== newStartDate.getTime()) {
-                                    task.start_date = newStartDate;
-                                    task.end_date = gantt.calculateEndDate(task);
-                                    gantt.updateTask(task.id);
-                                    changed = true;
-                                }
-                            }
-                        }
-                    });
-                }
-                if (iterations >= maxIterations) {
-                    console.error("Recalculation exceeded max iterations, possible circular dependency in links.");
-                }
-            });
-            updateGantt();
-            if (!isInternalCall) {
-                showNotification("notification_recalculated", 'success');
-                updateUndoButtonState();
-            }
-        } catch (e) {
-            console.error("Erreur lors du recalcul manuel:", e);
-            showNotification("notification_recalculation_error", 'error');
-        }
-    }
-
     function exportGanttToPNG() {
-        if (!gantt) return;
-        let minDate = null;
-        let maxDate = null;
-        gantt.eachTask(function(task) {
-            if (task.start_date instanceof Date && !isNaN(task.start_date.getTime())) {
-                if (!minDate || task.start_date < minDate) {
-                    minDate = new Date(task.start_date);
-                }
-            }
-            if (task.end_date instanceof Date && !isNaN(task.end_date.getTime())) {
-                if (!maxDate || task.end_date > maxDate) {
-                    maxDate = new Date(task.end_date);
-                }
-            }
-        });
-        if (!minDate || !maxDate) {
+        if (!gantt || gantt.getTaskCount() === 0) {
             showNotification("notification_no_tasks_to_export", 'error');
             return;
         }
-        const startDate = gantt.date.add(minDate, -1, "day");
-        const endDate = gantt.date.add(maxDate, 1, "day");
+        const { min_date, max_date } = gantt.getSubtaskDates();
         const styles = `
             <style>
                 body { font-family: 'Segoe UI', sans-serif; }
                 .gantt_task_cell.weekend { background-color: #f0f0f0 !important; }
-                .member-indicator { width: 14px; height: 14px; display: inline-block; border-radius: 50%; margin-right: 5px; vertical-align: middle; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-                .gantt_grid_data .gantt_cell[data-column-name=members] { text-align: center; }
+                .member-indicator { display: none; }
                 .gantt_task_line { border-radius: 4px !important; }
                 .gantt_task_progress { border-radius: 4px !important; }
                 .priority-low { background-color: #d4edda !important; }
@@ -2379,7 +2480,7 @@
                 .priority-high { background-color: #f8d7da !important; }
             </style>
         `;
-        gantt.exportToPNG({ name: "gantt_diagram.png", raw: true, header: styles, start_date: startDate, end_date: endDate });
+        gantt.exportToPNG({ name: "gantt_diagram.png", raw: true, header: styles, start_date: min_date, end_date: max_date });
         showNotification("notification_png_exported");
     }
 
@@ -2394,111 +2495,128 @@
         members = [];
         projects = {};
         allLinks = [];
-        gantt.clearAll();
-        renderMembers();
-        renderProjects();
-        updateTaskMembers();
-        toggleNewTaskFieldsVisibility();
+        syncAndRenderGantt(); // Call central sync function
         showNotification('notification_all_data_cleared', 'success');
-        updateUndoButtonState();
     }
 
     function initDummyData() {
-      // Données de test pour faciliter la démonstration
       members = [
         { id: 'm1', name: 'Alice', color: '#FF8A80', visible: true },
         { id: 'm2', name: 'Bob', color: '#82B1FF', visible: true },
         { id: 'm3', name: 'Charlie', color: '#B9F6CA', visible: true },
-        { id: 'm4', name: 'Diana', color: '#FFD180', visible: true }
+        { id: 'm4', name: 'Diana', color: '#FFD180', visible: true },
+        { id: 'm5', name: 'Eve', color: '#C5CAE9', visible: true }
       ];
 
-      const projectId = 'p1';
       const today = new Date();
-      // Helper pour créer des dates de manière dynamique
       const startDate = (daysOffset) => gantt.date.date_to_str(gantt.config.date_format)(gantt.date.add(today, daysOffset, 'day'));
 
-      projects = {
-        [projectId]: {
-          id: projectId,
-          name: "Lancement d'un nouveau produit",
-          description: "Plan complet pour le lancement d'un nouveau produit innovant.",
-          deadline: startDate(60),
-          priority: 'high',
-          color: '#8E44AD',
-          visible: true,
-          type: gantt.config.types.project,
-          parent: "0",
-          open: true,
+      projects = {}; // Reset projects
+
+      // Project 1: Lancement d'un nouveau produit (New Product Launch)
+      const p1Id = 'proj_new_product';
+      projects[p1Id] = {
+          id: p1Id, name: "Lancement d'un nouveau produit", description: "Plan complet pour le lancement d'un produit innovant.", deadline: startDate(90),
+          priority: 'high', color: '#8E44AD', visible: true, type: gantt.config.types.project, parent: "0", open: true,
           tasks: [
-            // Phase 1: Recherche et Développement
-            { id: 't1', name: 'Phase de Recherche', type: gantt.config.types.project, parent: projectId, open: true },
-            { id: 't1_1', name: 'Étude de marché', start: startDate(0), duration: 10, progress: 0.9, parent: 't1', memberIds: ['m1'] , type: 'task'},
-            { id: 't1_2', name: 'Analyse concurrentielle', start: startDate(2), duration: 8, progress: 0.7, parent: 't1', memberIds: ['m2'], type: 'task' },
-            { id: 't1_3', name: 'Spécifications du produit', start: startDate(10), duration: 5, progress: 0.5, parent: 't1', memberIds: ['m1', 'm4'], type: 'task' },
-            
-            // Phase 2: Développement
-            { id: 't2', name: 'Phase de Développement', type: gantt.config.types.project, parent: projectId, open: true },
-            { id: 't2_1', name: 'Développement du prototype', start: startDate(15), duration: 15, progress: 0.2, parent: 't2', memberIds: ['m2', 'm3'], type: 'task' },
-            { id: 't2_2', name: 'Design UI/UX', start: startDate(15), duration: 8, progress: 0.4, parent: 't2', memberIds: ['m4'], type: 'task' },
-            
-            // Phase 3: Marketing et Lancement
-            { id: 't3', name: 'Phase Marketing', type: gantt.config.types.project, parent: projectId, open: true },
-            { id: 't3_1', name: 'Création du site web', start: startDate(30), duration: 10, progress: 0.1, parent: 't3', memberIds: ['m4'], type: 'task' },
-            { id: 't3_2', name: 'Campagne publicitaire', start: startDate(35), duration: 15, progress: 0, parent: 't3', memberIds: ['m1', 'm2'], type: 'task' }
+              { id: 'p1_t1', name: 'Phase de Recherche', type: gantt.config.types.project, parent: p1Id, open: true, tasks: [
+                  { id: 'p1_t1_1', name: 'Étude de marché approfondie', start: startDate(0), duration: 10, progress: 0.9, parent: 'p1_t1', memberIds: ['m1', 'm4'], type: 'task', comments: "Analyser les tendances du marché et les besoins des clients." },
+                  { id: 'p1_t1_2', name: 'Analyse concurrentielle détaillée', start: startDate(5), duration: 8, progress: 0.7, parent: 'p1_t1', memberIds: ['m2'], type: 'task', comments: "Identifier les forces et faiblesses des concurrents." },
+                  { id: 'p1_t1_3', name: 'Spécifications techniques du produit', start: startDate(10), duration: 5, progress: 0.5, parent: 'p1_t1', memberIds: ['m1', 'm3'], type: 'task', comments: "Définir les fonctionnalités clés et les exigences techniques." },
+              ]},
+              { id: 'p1_t2', name: 'Phase de Développement', type: gantt.config.types.project, parent: p1Id, open: true, tasks: [
+                  { id: 'p1_t2_1', name: 'Développement du prototype initial', start: startDate(15), duration: 15, progress: 0.2, parent: 'p1_t2', memberIds: ['m2', 'm3'], type: 'task', comments: "Première version fonctionnelle du produit." },
+                  { id: 'p1_t2_2', name: 'Design UI/UX et maquettes', start: startDate(15), duration: 8, progress: 0.4, parent: 'p1_t2', memberIds: ['m4'], type: 'task', comments: "Création de l'interface utilisateur et de l'expérience utilisateur." },
+                  { id: 'p1_t2_3', name: 'Tests internes et débogage', start: startDate(30), duration: 7, progress: 0, parent: 'p1_t2', memberIds: ['m3', 'm5'], type: 'task', comments: "Assurer la qualité et la stabilité du logiciel." },
+              ]},
+              { id: 'p1_t3', name: 'Phase Marketing et Lancement', type: gantt.config.types.project, parent: p1Id, open: true, tasks: [
+                  { id: 'p1_t3_1', name: 'Création du site web de lancement', start: startDate(35), duration: 10, progress: 0.1, parent: 'p1_t3', memberIds: ['m4'], type: 'task', comments: "Développer la page d'atterrissage et les informations produit." },
+                  { id: 'p1_t3_2', name: 'Campagne publicitaire pré-lancement', start: startDate(40), duration: 15, progress: 0, parent: 'p1_t3', memberIds: ['m1', 'm2'], type: 'task', comments: "Préparer les annonces et les partenariats." },
+                  { id: 'p1_t3_3', name: 'Lancement officiel du produit', start: startDate(55), duration: 1, progress: 0, parent: 'p1_t3', memberIds: ['m1', 'm2', 'm3', 'm4', 'm5'], type: gantt.config.types.milestone, locked: true, comments: "Jour J du lancement!" }
+              ]}
           ]
-        }
       };
-      
-      // Liens de dépendance entre les tâches
+
+      // Project 2: Refonte du site web (Website Redesign)
+      const p2Id = 'proj_website_redesign';
+      projects[p2Id] = {
+          id: p2Id, name: "Refonte du site web", description: "Modernisation de l'interface et amélioration des performances.", deadline: startDate(70),
+          priority: 'medium', color: '#27AE60', visible: true, type: gantt.config.types.project, parent: "0", open: true,
+          tasks: [
+              { id: 'p2_t1', name: 'Analyse et Planification', type: gantt.config.types.project, parent: p2Id, open: true, tasks: [
+                  { id: 'p2_t1_1', name: 'Audit du site existant', start: startDate(5), duration: 7, progress: 0.8, parent: 'p2_t1', memberIds: ['m5'], type: 'task' },
+                  { id: 'p2_t1_2', name: 'Définition des objectifs', start: startDate(7), duration: 3, progress: 1, parent: 'p2_t1', memberIds: ['m1', 'm5'], type: 'task' },
+              ]},
+              { id: 'p2_t2', name: 'Conception et Développement', type: gantt.config.types.project, parent: p2Id, open: true, tasks: [
+                  { id: 'p2_t2_1', name: 'Wireframing et Prototypage', start: startDate(12), duration: 10, progress: 0.6, parent: 'p2_t2', memberIds: ['m4'], type: 'task' },
+                  { id: 'p2_t2_2', name: 'Développement Front-end', start: startDate(15), duration: 20, progress: 0.3, parent: 'p2_t2', memberIds: ['m2', 'm3'], type: 'task' },
+                  { id: 'p2_t2_3', name: 'Développement Back-end', start: startDate(20), duration: 18, progress: 0.1, parent: 'p2_t2', memberIds: ['m3', 'm5'], type: 'task' },
+              ]},
+              { id: 'p2_t3', name: 'Déploiement et Suivi', type: gantt.config.types.project, parent: p2Id, open: true, tasks: [
+                  { id: 'p2_t3_1', name: 'Tests d\'intégration', start: startDate(38), duration: 5, progress: 0, parent: 'p2_t3', memberIds: ['m5'], type: 'task' },
+                  { id: 'p2_t3_2', name: 'Mise en production', start: startDate(45), duration: 2, progress: 0, parent: 'p2_t3', memberIds: ['m2', 'm3'], type: 'task' },
+              ]}
+          ]
+      };
+
+      // Project 3: Formation Interne (Internal Training) - simpler project
+      const p3Id = 'proj_internal_training';
+      projects[p3Id] = {
+          id: p3Id, name: "Formation Interne", description: "Développement d'un nouveau module de formation.", deadline: startDate(40),
+          priority: 'low', color: '#F39C12', visible: true, type: gantt.config.types.project, parent: "0", open: true,
+          tasks: [
+              { id: 'p3_t1', name: 'Préparation du contenu', start: startDate(10), duration: 8, progress: 0.75, parent: p3Id, memberIds: ['m1', 'm5'], type: 'task' },
+              { id: 'p3_t2', name: 'Création des supports', start: startDate(18), duration: 10, progress: 0.5, parent: p3Id, memberIds: ['m4'], type: 'task' },
+              { id: 'p3_t3', name: 'Session de formation', start: startDate(28), duration: 3, progress: 0, parent: p3Id, memberIds: ['m1', 'm2', 'm3'], type: 'task' }
+          ]
+      };
+
       allLinks = [
-        { id: 'l1', source: 't1_1', target: 't1_3', type: '0' }, // Fin à Début
-        { id: 'l2', source: 't1_3', target: 't2_1', type: '0' },
-        { id: 'l3', source: 't1_3', target: 't2_2', type: '0' },
-        { id: 'l4', source: 't2_1', target: 't3_1', type: '0' },
-        { id: 'l5', source: 't2_2', target: 't3_1', type: '0' },
-        { id: 'l6', source: 't3_1', target: 't3_2', type: '0' }
+          // Links for Project 1
+          { id: 'l_p1_1', source: 'p1_t1_1', target: 'p1_t1_3', type: '0' },
+          { id: 'l_p1_2', source: 'p1_t1_2', target: 'p1_t1_3', type: '0' },
+          { id: 'l_p1_3', source: 'p1_t1_3', target: 'p1_t2_1', type: '0' },
+          { id: 'l_p1_4', source: 'p1_t1_3', target: 'p1_t2_2', type: '0' },
+          { id: 'l_p1_5', source: 'p1_t2_1', target: 'p1_t2_3', type: '0' },
+          { id: 'l_p1_6', source: 'p1_t2_2', target: 'p1_t2_3', type: '0' },
+          { id: 'l_p1_7', source: 'p1_t2_3', target: 'p1_t3_1', type: '0' },
+          { id: 'l_p1_8', source: 'p1_t3_1', target: 'p1_t3_2', type: '0' },
+          { id: 'l_p1_9', source: 'p1_t3_2', target: 'p1_t3_3', type: '0' },
+
+          // Links for Project 2
+          { id: 'l_p2_1', source: 'p2_t1_1', target: 'p2_t1_2', type: '0' },
+          { id: 'l_p2_2', source: 'p2_t1_2', target: 'p2_t2_1', type: '0' },
+          { id: 'l_p2_3', source: 'p2_t2_1', target: 'p2_t2_2', type: '0' },
+          { id: 'l_p2_4', source: 'p2_t2_2', target: 'p2_t2_3', type: '0' },
+          { id: 'l_p2_5', source: 'p2_t2_3', target: 'p2_t3_1', type: '0' },
+          { id: 'l_p2_6', source: 'p2_t3_1', target: 'p2_t3_2', type: '0' },
+
+          // Links for Project 3
+          { id: 'l_p3_1', source: 'p3_t1', target: 'p3_t2', type: '0' },
+          { id: 'l_p3_2', source: 'p3_t2', target: 'p3_t3', type: '0' }
       ];
     }
   
     function toggleTaskLock(taskId) {
         saveStateToHistory();
-        const task = gantt.getTask(taskId);
-        if (task) {
-            task.locked = !task.locked;
-            task.readonly = task.locked;
-            let taskDataStore = findTaskInProjectsModel(taskId);
-            if(taskDataStore) {
-                taskDataStore.locked = task.locked;
-            }
-            gantt.updateTask(task.id);
+        const taskDataStore = findTaskInProjectsModel(taskId);
+        if(taskDataStore) {
+            taskDataStore.locked = !taskDataStore.locked;
+            syncAndRenderGantt(); // Call central sync function
         }
-        updateUndoButtonState();
     }
 
     function highlightOverloadDay(memberId, dateStr) {
-        // Clear previous highlights by resetting the info object
-        highlightedInfo.taskIds = [];
-        highlightedInfo.level = '';
-
+        highlightedInfo = { taskIds: [], level: '' };
         if (dateStr) {
             const load = memberWorkload[dateStr]?.[memberId];
             if (load) {
                 highlightedInfo.level = load >= 4 ? 'overload-highlight-error' : 'overload-highlight-warning';
-                
-                const stringMemberId = String(memberId);
-                const checkDateStr = dateStr;
-
                 gantt.eachTask(function(task) {
-                    if (task.type === gantt.config.types.task && Array.isArray(task.memberIds) && task.memberIds.map(String).includes(stringMemberId)) {
-                        const dateToStr = gantt.date.date_to_str("%Y-%m-%d");
-                        for (let d = new Date(task.start_date); d < task.end_date; d.setDate(d.getDate() + 1)) {
-                            if (gantt.isWorkTime({ date: d, unit: "day" })) {
-                                const currentDayStr = dateToStr(d);
-                                if (currentDayStr === checkDateStr) {
-                                    highlightedInfo.taskIds.push(task.id);
-                                    break; 
-                                }
-                            }
+                    if (task.type === gantt.config.types.task && (task.memberIds || []).includes(memberId)) {
+                        const checkDate = gantt.date.str_to_date("%Y-%m-%d")(dateStr);
+                        if (checkDate >= task.start_date && checkDate < task.end_date) {
+                            highlightedInfo.taskIds.push(task.id);
                         }
                     }
                 });
@@ -2507,80 +2625,41 @@
         gantt.render();
     }
 
+    document.addEventListener('DOMContentLoaded', function () {
+        // Restore scroll position from localStorage on page load
+        const x = parseInt(localStorage.getItem('ganttScrollX')) || 0;
+        const y = parseInt(localStorage.getItem('ganttScrollY')) || 0;
 
-	let collapsedStateMap = {};
-	gantt.attachEvent("onTaskOpened", function (taskId) {
-	  collapsedStateMap[taskId] = false;
-	  return true;
-	});
-	gantt.attachEvent("onTaskClosed", function (taskId) {
-	  collapsedStateMap[taskId] = true;
-	  return true;
-	});
-	function memorizeCollapseState() {
-	  collapsedStateMap = {};
-	  gantt.eachTask(function (task) {
-		if (task.type === "project" || task.type === "task") {
-		  collapsedStateMap[task.id] = !task.$open;
-		}
-	  });
-	}
-	function restoreCollapseState() {
-	  for (const taskId in collapsedStateMap) {
-		if (gantt.isTaskExists(taskId)) {
-		  if (collapsedStateMap[taskId]) {
-			gantt.close(taskId);
-		  } else {
-			gantt.open(taskId);
-		  }
-		}
-	  }
-	}
-	gantt.attachEvent("onBeforeTaskDrag", function() {
-	  memorizeCollapseState();
-	  return true;
+        gantt.config.date_format = "%Y-%m-%d";
+        gantt.config.xml_date = "%Y-%m-%d";
+        initGantt();
+        document.getElementById('customLightboxTaskDuration').addEventListener('input', function() {
+            updateLightboxSchedule('duration');
+        });
+        // Load dummy data on startup
+        initDummyData(); 
+        saveStateToHistory();
+        setLanguage(currentLang);
+        syncAndRenderGantt(); // Initial render
+
+        // Apply restored scroll after initial render
+        setTimeout(() => {
+            if (typeof gantt !== 'undefined') {
+                gantt.scrollTo(x, y);
+            }
+        }, 300);
     });
 
-    function saveStateToHistory() {
-        const currentState = {
-            members: JSON.parse(JSON.stringify(members)),
-            projects: JSON.parse(JSON.stringify(projects)),
-            allLinks: JSON.parse(JSON.stringify(allLinks)),
-            currentLang: currentLang
-        };
-        historyStack.push(currentState);
-        if (historyStack.length > MAX_HISTORY_SIZE) {
-            historyStack.shift();
-        }
-        updateUndoButtonState();
-    }
+    // Save scroll position to localStorage before the page is unloaded
+    window.addEventListener('beforeunload', () => {
+      if (typeof gantt !== 'undefined' && gantt.getScrollState) {
+        const scroll = gantt.getScrollState();
+        localStorage.setItem('ganttScrollX', scroll.x);
+        localStorage.setItem('ganttScrollY', scroll.y);
+      }
+    });
 
-    function undoLastAction() {
-        if (historyStack.length > 1) {
-            historyStack.pop();
-            const previousState = historyStack[historyStack.length - 1];
-            members = JSON.parse(JSON.stringify(previousState.members));
-            projects = JSON.parse(JSON.stringify(previousState.projects));
-            allLinks = JSON.parse(JSON.stringify(previousState.allLinks));
-            currentLang = previousState.currentLang;
-            setLanguage(currentLang);
-            renderMembers();
-            renderProjects();
-            updateTaskMembers();
-            updateGantt();
-            showNotification('Action annulée.');
-        } else {
-            showNotification('Impossible d\'annuler davantage.', 'error');
-        }
-        updateUndoButtonState();
-    }
-
-    function updateUndoButtonState() {
-        const undoButton = document.getElementById('undoButton');
-        if (undoButton) {
-            undoButton.disabled = historyStack.length <= 1; 
-        }
-    }
 </script>
+
 </body>
 </html>
